@@ -270,19 +270,19 @@ public class RecSPLParser {
     }
 
     public static void main(String[] args) {
-        if (args.length != 1) {
-            System.out.println("Usage: java RecSPLParser <input_file.txt>");
-            return;
-        }
-
-        String inputFile = args[0];
+        // Define the path to the XML file in the project directory
+        String inputFile = "Compiler project//input.txt"; // Adjust this path as per your project structure
 
         try {
             // Step 1: Read input file
             String input = new String(Files.readAllBytes(Paths.get(inputFile)));
             System.out.println("Input file contents:\n" + input);
+
             // Step 2: Lexing process - generate tokens
             List<Token> tokens = RecSPLLexer.lex(input);
+            for (int i = 0; i < tokens.size(); i++) {
+                System.out.println(tokens.get(i));
+            }
 
             // Step 3: Parsing process
             RecSPLParser parser = new RecSPLParser(tokens); // Pass tokens to the parser
