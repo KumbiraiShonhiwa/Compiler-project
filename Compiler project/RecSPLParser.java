@@ -39,10 +39,17 @@ public class RecSPLParser {
     // }
     private List<Token> tokens;
     private int currentTokenIndex;
+    private int nodeIdCounter = 0;
+    private SyntaxTree syntaxTree;
 
-    public RecSPLParser(List<Token> tokens) {
+    private int getNextNodeId() {
+        return nodeIdCounter++;
+    }
+
+    public RecSPLParser(List<Token> tokens, Node node) {
         this.tokens = tokens;
         this.currentTokenIndex = 0;
+        this.syntaxTree = new SyntaxTree(node);
     }
 
     private Token getCurrentToken() {
@@ -57,77 +64,111 @@ public class RecSPLParser {
         currentTokenIndex++;
     }
 
-    private void expect(TokenType expectedType) throws Exception {
+    private void expect(TokenType expectedType, Node parentNode) throws Exception {
         Token token = getCurrentToken();
         if (token == null || token.type != expectedType) {
             throw new Exception("Expected " + expectedType + " but found " + (token != null ? token.type : "null"));
         }
-        consume();
+        // Node childNode = new Node(nodeIdCounter++, token.type.toString());
+        // parentNode.addChild(childNode.unid);
+        // consume();
+        // Create a new leaf node for this token
+        LeafNode leafNode = new LeafNode(parentNode.getUnid(), getNextNodeId(), token.type.toString());
+
+        // Add the leaf node to the tree
+        syntaxTree.addLeafNode(leafNode);
+
+        // Add this leaf node's UNID as a child of the parent node
+        parentNode.addChild(leafNode.getUnid());
+
+        consume(); // Move to the next token
     }
 
     // Recursive Descent Functions
     // <PROG> ::= main GLOBVARS ALGO FUNCTIONS
     public void parseProgram() throws Exception {
-        expect(TokenType.MAIN); // match 'main'
-        parseGlobVars();        // match global variables
-        parseAlgo();            // match algorithm block
-        parseFunctions();       // match functions
+        Node programNode = new Node(nodeIdCounter++, "PROG");
+        this.syntaxTree.root.addChild(programNode.unid);
+
+        expect(TokenType.MAIN, programNode); // match 'main'
+        parseGlobVars(programNode);          // match global variables
+        parseAlgo(programNode);              // match algorithm block
+        parseFunctions(programNode);         // match functions
     }
 
     // <GLOBVARS> ::= VTYP VNAME , GLOBVARS | // nullable
-    public void parseGlobVars() throws Exception {
+    public void parseGlobVars(Node parentNode) throws Exception {
         Token token = getCurrentToken();
         if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
-            parseVType();
-            expect(TokenType.VNAME);
+            Node globVarsNode = new Node(nodeIdCounter++, "GLOBVARS");
+            parentNode.addChild(globVarsNode.unid);
+
+            parseVType(globVarsNode);
+            expect(TokenType.VNAME, globVarsNode);
+
             if (getCurrentToken().type == TokenType.COMMA) {
                 consume(); // consume comma
-                parseGlobVars(); // recursively parse more global vars
+                parseGlobVars(globVarsNode); // recursively parse more global vars
             }
         }
-        // GLOBVARS is nullable, so it can return without consuming anything
     }
 
     // <ALGO> ::= begin INSTRUC end
-    public void parseAlgo() throws Exception {
-        expect(TokenType.BEGIN);
-        parseInstruc();
-        expect(TokenType.END);
+    public void parseAlgo(Node parentNode) throws Exception {
+        Node algoNode = new Node(nodeIdCounter++, "ALGO");
+        parentNode.addChild(algoNode.unid);
+
+        expect(TokenType.BEGIN, algoNode);
+        parseInstruc(algoNode);
+        expect(TokenType.END, algoNode);
     }
 
     // <INSTRUC> ::= COMMAND ; INSTRUC | // nullable
-    public void parseInstruc() throws Exception {
+    public void parseInstruc(Node parentNode) throws Exception {
         Token token = getCurrentToken();
         if (token != null && token.type != TokenType.END) {
-            parseCommand();
-            expect(TokenType.SEMICOLON);
-            parseInstruc(); // recursively parse more instructions
+            Node instrucNode = new Node(nodeIdCounter++, "INSTRUC");
+            parentNode.addChild(instrucNode.unid);
+
+            parseCommand(instrucNode);
+            expect(TokenType.SEMICOLON, instrucNode);
+            parseInstruc(instrucNode); // recursively parse more instructions
         }
-        // INSTRUC is nullable, so it can return without consuming anything
     }
 
     // <COMMAND> ::= skip | halt | print ATOMIC | ASSIGN | CALL | BRANCH
-    public void parseCommand() throws Exception {
+    public void parseCommand(Node parentNode) throws Exception {
+        // Create a new inner node for the COMMAND
+        Node commandNode = new Node(getNextNodeId(), "COMMAND");
+
+        // Add the inner node to the syntax tree
+        syntaxTree.addInnerNode(commandNode);
+
+        // Add this inner node's UNID as a child of the parent node
+        parentNode.addChild(commandNode.getUnid());
+
         Token token = getCurrentToken();
         switch (token.type) {
             case SKIP:
                 consume(); // match 'skip'
+                commandNode.setSymbol("skip");
                 break;
             case HALT:
                 consume(); // match 'halt'
+                commandNode.setSymbol("halt");
                 break;
             case PRINT:
                 consume(); // match 'print'
-                parseAtomic();
+                parseAtomic(commandNode);
                 break;
             case VNAME:
-                parseAssign();
+                parseAssign(commandNode);
                 break;
             case FNAME:
-                parseCall();
+                parseCall(commandNode);
                 break;
             case IF:
-                parseBranch();
+                parseBranch(commandNode);
                 break;
             default:
                 throw new Exception("Unexpected command: " + token);
@@ -136,21 +177,29 @@ public class RecSPLParser {
 
     // Implement other rules similarly...
     // Helper methods
-    private void parseAtomic() throws Exception {
+    private void parseAtomic(Node parentNode) throws Exception {
+        Node atomicNode = new Node(nodeIdCounter++, "ATOMIC");
+        syntaxTree.addInnerNode(atomicNode);
+        parentNode.addChild(atomicNode.unid);
+
         Token token = getCurrentToken();
         if (token.type == TokenType.VNAME || token.type == TokenType.CONST) {
-            consume(); // match atomic value
+            expect(token.type, atomicNode); // match atomic value
         } else {
             throw new Exception("Expected an atomic value but found " + token);
         }
     }
 
-    private void parseAssign() throws Exception {
-        expect(TokenType.VNAME);
+    private void parseAssign(Node parentNode) throws Exception {
+        Node assignNode = new Node(nodeIdCounter++, "ASSIGN");
+        syntaxTree.addInnerNode(assignNode);
+        parentNode.addChild(assignNode.unid);
+
+        expect(TokenType.VNAME, assignNode);
         Token token = getCurrentToken();
         if (token.type == TokenType.EQUALS) {
             consume(); // match '='
-            parseTerm();
+            parseTerm(assignNode);
         } else if (token.type == TokenType.INPUT) {
             consume(); // match '< input'
         } else {
@@ -158,114 +207,153 @@ public class RecSPLParser {
         }
     }
 
-    private void parseCall() throws Exception {
-        expect(TokenType.FNAME);
-        expect(TokenType.LPAREN);
-        parseAtomic();
-        expect(TokenType.COMMA);
-        parseAtomic();
-        expect(TokenType.COMMA);
-        parseAtomic();
-        expect(TokenType.RPAREN);
+    private void parseCall(Node parentNode) throws Exception {
+        Node callNode = new Node(nodeIdCounter++, "CALL");
+        syntaxTree.addInnerNode(callNode);
+        parentNode.addChild(callNode.unid);
+
+        expect(TokenType.FNAME, callNode);
+        expect(TokenType.LPAREN, callNode);
+        parseAtomic(callNode);
+        expect(TokenType.COMMA, callNode);
+        parseAtomic(callNode);
+        expect(TokenType.COMMA, callNode);
+        parseAtomic(callNode);
+        expect(TokenType.RPAREN, callNode);
     }
 
-    private void parseBranch() throws Exception {
-        expect(TokenType.IF);
-        parseCond();
-        expect(TokenType.THEN);
-        parseAlgo();
-        expect(TokenType.ELSE);
-        parseAlgo();
+    private void parseBranch(Node parentNode) throws Exception {
+        Node branchNode = new Node(nodeIdCounter++, "BRANCH");
+        syntaxTree.addInnerNode(branchNode);
+        parentNode.addChild(branchNode.unid);
+
+        expect(TokenType.IF, branchNode);
+        parseCond(branchNode);
+        expect(TokenType.THEN, branchNode);
+        parseAlgo(branchNode);
+        expect(TokenType.ELSE, branchNode);
+        parseAlgo(branchNode);
     }
 
-    private void parseCond() throws Exception {
-        parseSimple(); // for simplicity, assuming SIMPLE conditions
+    private void parseCond(Node parentNode) throws Exception {
+        Node condNode = new Node(nodeIdCounter++, "COND");
+        syntaxTree.addInnerNode(condNode);
+        parentNode.addChild(condNode.unid);
+
+        parseSimple(condNode);
     }
 
-    private void parseSimple() throws Exception {
-        parseAtomic();
-        expect(TokenType.BINOP); // BINOP can be eq, grt, etc.
-        parseAtomic();
+    private void parseSimple(Node parentNode) throws Exception {
+        Node simpleNode = new Node(nodeIdCounter++, "SIMPLE");
+        syntaxTree.addInnerNode(simpleNode);
+        parentNode.addChild(simpleNode.unid);
+
+        parseAtomic(simpleNode);
+        expect(TokenType.BINOP, simpleNode); // BINOP can be eq, grt, etc.
+        parseAtomic(simpleNode);
     }
 
-    private void parseTerm() throws Exception {
-        parseAtomic(); // or recursive call for deep-nested terms
+    private void parseTerm(Node parentNode) throws Exception {
+        Node termNode = new Node(nodeIdCounter++, "TERM");
+        syntaxTree.addInnerNode(termNode);
+        parentNode.addChild(termNode.unid);
+
+        parseAtomic(termNode);
     }
 
     // <FUNCTIONS> ::= // nullable | DECL FUNCTIONS
-    public void parseFunctions() throws Exception {
+    public void parseFunctions(Node parentNode) throws Exception {
         Token token = getCurrentToken();
         if (token != null && (token.type == TokenType.NUM || token.type == TokenType.VOID)) {
-            parseDecl(); // Parse a single function declaration
-            parseFunctions(); // Recursively parse more functions (if any)
+            Node functionsNode = new Node(nodeIdCounter++, "FUNCTIONS");
+            syntaxTree.addInnerNode(parentNode);
+            parentNode.addChild(functionsNode.unid);
+
+            parseDecl(functionsNode); // Parse a single function declaration
+            parseFunctions(functionsNode); // Recursively parse more functions (if any)
         }
-        // FUNCTIONS is nullable, so this function can return without consuming anything
     }
 
-// <DECL> ::= HEADER BODY
-    private void parseDecl() throws Exception {
-        parseHeader(); // Parse the function header
-        parseBody();   // Parse the function body
+    // <DECL> ::= HEADER BODY
+    private void parseDecl(Node parentNode) throws Exception {
+        Node declNode = new Node(nodeIdCounter++, "DECL");
+        syntaxTree.addInnerNode(declNode);
+        parentNode.addChild(declNode.unid);
+
+        parseHeader(declNode); // Parse the function header
+        parseBody(declNode);   // Parse the function body
     }
 
 // <HEADER> ::= FTYP FNAME( VNAME , VNAME , VNAME )
-    private void parseHeader() throws Exception {
-        parseFType();  // Parse function return type (num or void)
-        expect(TokenType.FNAME); // Expect a function name (FNAME)
-        expect(TokenType.LPAREN); // Expect '('
-        expect(TokenType.VNAME);  // Expect first VNAME (parameter)
-        expect(TokenType.COMMA);
-        expect(TokenType.VNAME);  // Expect second VNAME (parameter)
-        expect(TokenType.COMMA);
-        expect(TokenType.VNAME);  // Expect third VNAME (parameter)
-        expect(TokenType.RPAREN); // Expect ')'
+    private void parseHeader(Node parentNode) throws Exception {
+        Node headerNode = new Node(nodeIdCounter++, "HEADER");
+        syntaxTree.addInnerNode(headerNode);
+        parentNode.addChild(headerNode.unid);
+
+        parseFType(headerNode);  // Parse function return type (num or void)
+        expect(TokenType.FNAME, headerNode); // Expect a function name (FNAME)
+        expect(TokenType.LPAREN, headerNode); // Expect '('
+        expect(TokenType.VNAME, headerNode);  // Expect first VNAME (parameter)
+        expect(TokenType.COMMA, headerNode);
+        expect(TokenType.VNAME, headerNode);  // Expect second VNAME (parameter)
+        expect(TokenType.COMMA, headerNode);
+        expect(TokenType.VNAME, headerNode);  // Expect third VNAME (parameter)
+        expect(TokenType.RPAREN, headerNode); // Expect ')'
     }
 
 // <BODY> ::= PROLOG LOCVARS ALGO EPILOG SUBFUNCS end
-    private void parseBody() throws Exception {
-        expect(TokenType.LBRACE); // Expect '{'
-        parseLocVars();           // Parse local variables
-        parseAlgo();              // Parse the algorithm (ALGO)
-        expect(TokenType.RBRACE); // Expect '}'
-        parseSubFuncs();          // Parse any sub-functions
-        expect(TokenType.END);    // Expect 'end' to close the function
+    private void parseBody(Node parentNode) throws Exception {
+        Node bodyNode = new Node(nodeIdCounter++, "BODY");
+        syntaxTree.addInnerNode(bodyNode);
+        parentNode.addChild(bodyNode.unid);
+
+        expect(TokenType.LBRACE, bodyNode); // Expect '{'
+        parseLocVars(bodyNode);           // Parse local variables
+        parseAlgo(bodyNode);              // Parse the algorithm (ALGO)
+        expect(TokenType.RBRACE, bodyNode); // Expect '}'
     }
 
 // <LOCVARS> ::= VTYP VNAME , VTYP VNAME , VTYP VNAME ,
-    private void parseLocVars() throws Exception {
-        parseVType();             // Parse first variable type
-        expect(TokenType.VNAME);  // Parse first variable name
-        expect(TokenType.COMMA);
-        parseVType();             // Parse second variable type
-        expect(TokenType.VNAME);  // Parse second variable name
-        expect(TokenType.COMMA);
-        parseVType();             // Parse third variable type
-        expect(TokenType.VNAME);  // Parse third variable name
-        expect(TokenType.COMMA);  // Expect trailing comma (according to grammar)
-    }
-
-// <SUBFUNCS> ::= FUNCTIONS
-    private void parseSubFuncs() throws Exception {
-        parseFunctions(); // Functions within a function (sub-functions)
-    }
-
-    // <VTYP> ::= num | text
-    private void parseVType() throws Exception {
+    private void parseLocVars(Node parentNode) throws Exception {
         Token token = getCurrentToken();
         if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
-            consume(); // Consume the 'num' or 'text' token
-        } else {
-            throw new Exception("Expected 'num' or 'text' but found " + token);
+            Node locVarsNode = new Node(nodeIdCounter++, "LOCVARS");
+            syntaxTree.addInnerNode(locVarsNode);
+            parentNode.addChild(locVarsNode.unid);
+
+            parseVType(locVarsNode);       // match variable type
+            expect(TokenType.VNAME, locVarsNode);  // match variable name
+            if (getCurrentToken().type == TokenType.COMMA) {
+                consume();                 // consume the comma
+                parseLocVars(locVarsNode); // recursively parse more local variables
+            }
         }
     }
 
-    // <FTYP> ::= num | void
-    private void parseFType() throws Exception {
+    // <VTYP> ::= num | text
+    private void parseFType(Node parentNode) throws Exception {
+        Node fTypeNode = new Node(nodeIdCounter++, "FTYP");
+        syntaxTree.addInnerNode(fTypeNode);
+        parentNode.addChild(fTypeNode.unid);
+
         Token token = getCurrentToken();
         if (token.type == TokenType.NUM || token.type == TokenType.VOID) {
-            consume(); // Consume the 'num' or 'void' token
+            expect(token.type, fTypeNode); // match num or void
         } else {
-            throw new Exception("Expected 'num' or 'void' but found " + token);
+            throw new Exception("Expected function type (num or void) but found " + token);
+        }
+    }
+
+    private void parseVType(Node parentNode) throws Exception {
+        Node vTypeNode = new Node(nodeIdCounter++, "VTYP");
+        syntaxTree.addInnerNode(vTypeNode);
+        parentNode.addChild(vTypeNode.unid);
+
+        Token token = getCurrentToken();
+        if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
+            expect(token.type, vTypeNode); // match num or text
+        } else {
+            throw new Exception("Expected variable type (num or text) but found " + token);
         }
     }
 
@@ -284,9 +372,15 @@ public class RecSPLParser {
                 System.out.println(tokens.get(i));
             }
 
-            // Step 3: Parsing process
-            RecSPLParser parser = new RecSPLParser(tokens); // Pass tokens to the parser
+            // Step 3: Parsing process        
+            Node rootNode = new Node(0, "ROOT");
+            RecSPLParser parser = new RecSPLParser(tokens, rootNode); // Pass tokens to the parser
+
             parser.parseProgram(); // Start parsing the program
+
+            // Output the syntax tree
+            String syntaxTreeXML = parser.syntaxTree.toXML();
+            System.out.println(syntaxTreeXML);
 
             System.out.println("Parsing completed successfully. No syntax errors found.");
         } catch (Exception e) {
