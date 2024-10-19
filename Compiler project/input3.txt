@@ -1,0 +1,11 @@
+main
+num V_a, num V_b,
+begin
+    V_a = 5;
+    V_b = 10;
+    V_a = add(V_a, V_b);
+end
+
+functions
+end
+

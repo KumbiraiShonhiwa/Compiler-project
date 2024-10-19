@@ -1,0 +1,19 @@
+main
+num V_a, num V_b,
+begin
+    V_a = 5;
+    V_b = 10;
+    if eq(V_a, 5) then
+        begin
+        print V_b; 
+        end
+    else
+        begin
+        skip;
+        end
+    ;
+end
+
+functions
+end
+

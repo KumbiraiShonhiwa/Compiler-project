@@ -1,0 +1,9 @@
+main
+num V_a , V_b , V_c
+begin
+    print V_a;
+    V_a = 10;
+    V_b = 20;
+    V_c = add(V_a, V_b);
+    halt;
+end
