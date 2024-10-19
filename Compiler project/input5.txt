@@ -1,0 +1,9 @@
+main
+text V_msg,
+begin
+    V_msg = "Hello";
+    print V_msg;
+end
+
+functions
+end

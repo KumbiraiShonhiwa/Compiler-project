@@ -1,0 +1,11 @@
+main
+num V_a, num V_b, num V_c, num V_result1, num V_result2
+begin
+    V_a = 10;
+    V_b = 5;
+    V_c = 3;
+    V_result1 = 9;
+    V_result2 = V_result1;
+end
+
+

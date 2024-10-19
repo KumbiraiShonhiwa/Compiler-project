@@ -109,7 +109,7 @@ public class RecSPLParser {
     // <GLOBVARS> ::= VTYP VNAME , GLOBVARS | // nullable
     public void parseGlobVars(Node parentNode) throws Exception {
         Token token = getCurrentToken();
-        if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
+        if (token.type == TokenType.VTYP) {
             Node globVarsNode = new Node(nodeIdCounter++, "GLOBVARS");
             parentNode.addChild(globVarsNode.unid);
 
@@ -322,10 +322,16 @@ public class RecSPLParser {
         Node simpleNode = new Node(nodeIdCounter++, "SIMPLE");
         syntaxTree.addInnerNode(simpleNode);
         parentNode.addChild(simpleNode.unid);
-
-        parseAtomic(simpleNode);
         expect(TokenType.BINOP, simpleNode); // BINOP can be eq, grt, etc.
+        expect(TokenType.LPAREN, simpleNode);
         parseAtomic(simpleNode);
+        expect(TokenType.COMMA, simpleNode);
+        parseAtomic(simpleNode);
+        expect(TokenType.RPAREN, simpleNode);
+
+        // parseAtomic(simpleNode);
+        // expect(TokenType.BINOP, simpleNode); // BINOP can be eq, grt, etc.
+        // parseAtomic(simpleNode);
     }
 
     private void parseTerm(Node parentNode) throws Exception {
@@ -339,7 +345,7 @@ public class RecSPLParser {
     // <FUNCTIONS> ::= // nullable | DECL FUNCTIONS
     public void parseFunctions(Node parentNode) throws Exception {
         Token token = getCurrentToken();
-        if (token != null && (token.type == TokenType.NUM || token.type == TokenType.VOID)) {
+        if (token != null && (token.type == TokenType.FTYP)) {
             Node functionsNode = new Node(nodeIdCounter++, "FUNCTIONS");
             syntaxTree.addInnerNode(parentNode);
             parentNode.addChild(functionsNode.unid);
@@ -382,16 +388,16 @@ public class RecSPLParser {
         syntaxTree.addInnerNode(bodyNode);
         parentNode.addChild(bodyNode.unid);
 
-        expect(TokenType.LBRACE, bodyNode); // Expect '{'
+        expect(TokenType.PROLOG, bodyNode); // Expect '{'
         parseLocVars(bodyNode);           // Parse local variables
         parseAlgo(bodyNode);              // Parse the algorithm (ALGO)
-        expect(TokenType.RBRACE, bodyNode); // Expect '}'
+        expect(TokenType.EPILOG, bodyNode); // Expect '}'
     }
 
 // <LOCVARS> ::= VTYP VNAME , VTYP VNAME , VTYP VNAME ,
     private void parseLocVars(Node parentNode) throws Exception {
         Token token = getCurrentToken();
-        if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
+        if (token.type == TokenType.VTYP) {
             Node locVarsNode = new Node(nodeIdCounter++, "LOCVARS");
             syntaxTree.addInnerNode(locVarsNode);
             parentNode.addChild(locVarsNode.unid);
@@ -412,7 +418,7 @@ public class RecSPLParser {
         parentNode.addChild(fTypeNode.unid);
 
         Token token = getCurrentToken();
-        if (token.type == TokenType.NUM || token.type == TokenType.VOID) {
+        if (token.type == TokenType.FTYP) {
             expect(token.type, fTypeNode); // match num or void
         } else {
             throw new Exception("Expected function type (num or void) but found " + token);
@@ -439,7 +445,7 @@ public class RecSPLParser {
 
     public static void main(String[] args) {
         // Define the path to the XML file in the project directory
-        String inputFile = "Compiler project//input.txt"; // Adjust this path as per your project structure
+        String inputFile = "Compiler project//input7.txt"; // Adjust this path as per your project structure
 
         try {
             // Step 1: Read input file
