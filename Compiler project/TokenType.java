@@ -12,7 +12,9 @@ public enum TokenType {
     SEMICOLON(";"), EQUALS("="), COMMA(","), LESS("<"),
     LPAREN("\\("), RPAREN("\\)"), LBRACE("\\{"), RBRACE("\\}"),
     WHITESPACE("[ \t\f\r\n]+"),
-    BINOP("eq|grt|add|sub|mul|div");
+    BINOP("eq|grt|add|sub|mul|div"),
+    VTYP("num|text"),
+    FTYP("num||void");
 
     public final String pattern;
 

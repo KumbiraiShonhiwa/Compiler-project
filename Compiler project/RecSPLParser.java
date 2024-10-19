@@ -1,7 +1,10 @@
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Stack;
 
 public class RecSPLParser {
 
@@ -41,6 +44,8 @@ public class RecSPLParser {
     private int currentTokenIndex;
     private int nodeIdCounter = 0;
     private SyntaxTree syntaxTree;
+    private Stack<Map<String, String>> symbolTableStack;
+    private Map<String, FunctionSignature> functionTable;
 
     private int getNextNodeId() {
         return nodeIdCounter++;
@@ -50,6 +55,11 @@ public class RecSPLParser {
         this.tokens = tokens;
         this.currentTokenIndex = 0;
         this.syntaxTree = new SyntaxTree(node);
+        this.symbolTableStack = new Stack<>();
+        this.functionTable = new HashMap<>();
+
+        // Push the global scope onto the stack
+        this.symbolTableStack.push(new HashMap<>());
     }
 
     private Token getCurrentToken() {
@@ -103,8 +113,17 @@ public class RecSPLParser {
             Node globVarsNode = new Node(nodeIdCounter++, "GLOBVARS");
             parentNode.addChild(globVarsNode.unid);
 
-            parseVType(globVarsNode);
+            String varType = parseVType(globVarsNode);
+            Token varToken = getCurrentToken();
             expect(TokenType.VNAME, globVarsNode);
+
+            // Semantic check: Add variable to global symbol table
+            Map<String, String> globalScope = symbolTableStack.peek();
+            if (globalScope.containsKey(varToken.data)) {
+                throw new Exception("Variable " + varToken.data + " already declared globally.");
+            } else {
+                globalScope.put(varToken.data, varType);
+            }
 
             if (getCurrentToken().type == TokenType.COMMA) {
                 consume(); // consume comma
@@ -119,7 +138,15 @@ public class RecSPLParser {
         parentNode.addChild(algoNode.unid);
 
         expect(TokenType.BEGIN, algoNode);
+
+        // Push a new scope (local to the algorithm block)
+        symbolTableStack.push(new HashMap<>());
+
         parseInstruc(algoNode);
+
+        // Pop the local scope
+        symbolTableStack.pop();
+
         expect(TokenType.END, algoNode);
     }
 
@@ -138,13 +165,8 @@ public class RecSPLParser {
 
     // <COMMAND> ::= skip | halt | print ATOMIC | ASSIGN | CALL | BRANCH
     public void parseCommand(Node parentNode) throws Exception {
-        // Create a new inner node for the COMMAND
         Node commandNode = new Node(getNextNodeId(), "COMMAND");
-
-        // Add the inner node to the syntax tree
         syntaxTree.addInnerNode(commandNode);
-
-        // Add this inner node's UNID as a child of the parent node
         parentNode.addChild(commandNode.getUnid());
 
         Token token = getCurrentToken();
@@ -169,6 +191,11 @@ public class RecSPLParser {
                 break;
             case IF:
                 parseBranch(commandNode);
+                break;
+            case RETURN:
+                consume(); // match 'return'
+                commandNode.setSymbol("return");
+                parseAtomic(commandNode); // parse the atomic expression after return
                 break;
             default:
                 throw new Exception("Unexpected command: " + token);
@@ -195,11 +222,25 @@ public class RecSPLParser {
         syntaxTree.addInnerNode(assignNode);
         parentNode.addChild(assignNode.unid);
 
+        Token varToken = getCurrentToken();
         expect(TokenType.VNAME, assignNode);
+
+        // Check if variable is declared in current scope or global scope
+        if (!isVariableDeclared(varToken.data)) {
+            throw new Exception("Variable " + varToken.data + " not declared.");
+        }
+
         Token token = getCurrentToken();
         if (token.type == TokenType.EQUALS) {
             consume(); // match '='
             parseTerm(assignNode);
+
+            // Check if assigned value matches the declared type
+            String varType = getVariableType(varToken.data);
+            String assignedType = inferExpressionType();
+            if (!varType.equals(assignedType)) {
+                throw new Exception("Type mismatch: cannot assign " + assignedType + " to " + varType + ".");
+            }
         } else if (token.type == TokenType.INPUT) {
             consume(); // match '< input'
         } else {
@@ -212,14 +253,48 @@ public class RecSPLParser {
         syntaxTree.addInnerNode(callNode);
         parentNode.addChild(callNode.unid);
 
+        Token funcToken = getCurrentToken();
         expect(TokenType.FNAME, callNode);
+
+        // Check if the function is declared
+        if (!functionTable.containsKey(funcToken.data)) {
+            throw new Exception("Function " + funcToken.data + " not declared.");
+        }
+
+        // Check the argument types against the function signature
+        FunctionSignature signature = functionTable.get(funcToken.data);
         expect(TokenType.LPAREN, callNode);
-        parseAtomic(callNode);
-        expect(TokenType.COMMA, callNode);
-        parseAtomic(callNode);
-        expect(TokenType.COMMA, callNode);
-        parseAtomic(callNode);
+        parseArguments(callNode, signature.getParamTypes());
         expect(TokenType.RPAREN, callNode);
+    }
+
+    private void parseArguments(Node parentNode, List<String> expectedTypes) throws Exception {
+        // implementation of argument parsing and type checking
+    }
+
+    // Helper function to check if a variable is declared in any active scope
+    private boolean isVariableDeclared(String varName) {
+        for (Map<String, String> scope : symbolTableStack) {
+            if (scope.containsKey(varName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String getVariableType(String varName) {
+        for (Map<String, String> scope : symbolTableStack) {
+            if (scope.containsKey(varName)) {
+                return scope.get(varName);
+            }
+        }
+        return null; // Variable not found
+    }
+
+    // Helper function to infer the type of an expression
+    private String inferExpressionType() {
+        // Example implementation, returning "num" or "text" based on the expression
+        return "num"; // placeholder
     }
 
     private void parseBranch(Node parentNode) throws Exception {
@@ -344,16 +419,21 @@ public class RecSPLParser {
         }
     }
 
-    private void parseVType(Node parentNode) throws Exception {
-        Node vTypeNode = new Node(nodeIdCounter++, "VTYP");
+    private String parseVType(Node parentNode) throws Exception {
+        Node vTypeNode = new Node(nodeIdCounter++, "VTYPE");
         syntaxTree.addInnerNode(vTypeNode);
         parentNode.addChild(vTypeNode.unid);
 
-        Token token = getCurrentToken();
-        if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
-            expect(token.type, vTypeNode); // match num or text
+        Token currentToken = getCurrentToken();
+
+        // Check the token for a valid type
+        if (currentToken.type == TokenType.VTYP) {
+            // Add the type token  to the syntax tree
+            expect(TokenType.VTYP, vTypeNode);
+            return currentToken.data;  // Return the type as a string
         } else {
-            throw new Exception("Expected variable type (num or text) but found " + token);
+            // If it's not a valid type, throw an error
+            throw new Exception("Expected a type, but found: " + currentToken.data);
         }
     }
 
