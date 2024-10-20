@@ -1,6 +1,7 @@
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,8 +110,11 @@ public class RecSPLParser {
     // <GLOBVARS> ::= VTYP VNAME , GLOBVARS | // nullable
     public void parseGlobVars(Node parentNode) throws Exception {
         Token token = getCurrentToken();
-        if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
-            
+        if (token == null) {
+            return;
+        }
+        if (token != null && token.type == TokenType.NUM || token.type == TokenType.TEXT) {
+
             Node globVarsNode = new Node(nodeIdCounter++, "GLOBVARS");
             syntaxTree.addInnerNode(globVarsNode);
             parentNode.addChild(globVarsNode.unid);
@@ -126,11 +130,16 @@ public class RecSPLParser {
             } else {
                 globalScope.put(varToken.data, varType);
             }
-
-            if (getCurrentToken().type == TokenType.COMMA) {
+            Token commaToken = getCurrentToken();
+            if (commaToken == null) {
+                return;
+            }
+            if (commaToken.type == TokenType.COMMA) {
                 consume(); // consume comma
                 parseGlobVars(globVarsNode); // recursively parse more global vars
             }
+        } else {
+            System.out.println("No global variables found");
         }
     }
 
@@ -138,6 +147,10 @@ public class RecSPLParser {
     public void parseAlgo(Node parentNode) throws Exception {
         Node algoNode = new Node(nodeIdCounter++, "ALGO");
         parentNode.addChild(algoNode.unid);
+        Token token = getCurrentToken();
+        if (token == null) {
+            return;
+        }
 
         expect(TokenType.BEGIN, algoNode);
 
@@ -206,16 +219,16 @@ public class RecSPLParser {
 
     // Implement other rules similarly...
     // Helper methods
-    private void parseAtomic(Node parentNode) throws Exception {
-        Node atomicNode = new Node(nodeIdCounter++, "ATOMIC");
-        syntaxTree.addInnerNode(atomicNode);
-        parentNode.addChild(atomicNode.unid);
-
+    private String parseAtomic(Node parentNode) throws Exception {
         Token token = getCurrentToken();
-        if (token.type == TokenType.VNAME || token.type == TokenType.CONST) {
-            expect(token.type, atomicNode); // match atomic value
+        if (token.type == TokenType.VNAME) {
+            expect(TokenType.VNAME, parentNode); // match variable name
+            return getVariableType(token.data); // return the type of the variable
+        } else if (token.type == TokenType.CONST) {
+            expect(TokenType.CONST, parentNode); // match constant
+            return "text"; // Constants are treated as "text"
         } else {
-            throw new Exception("Expected an atomic value but found " + token);
+            throw new Exception("Expected atomic value but found " + token.type);
         }
     }
 
@@ -259,22 +272,42 @@ public class RecSPLParser {
         expect(TokenType.FNAME, callNode);
 
         // Check if the function is declared
-        // if (!functionTable.containsKey(funcToken.data)) {
-        //     throw new Exception("Function " + funcToken.data + " not declared.");
-        // }
-        // Check the argument types against the function signature
-        // FunctionSignature signature = functionTable.get(funcToken.data);
+        if (!functionTable.containsKey(funcToken.data)) {
+            throw new Exception("Function " + funcToken.data + " not declared.");
+        }
+
+        FunctionSignature signature = functionTable.get(funcToken.data);
         expect(TokenType.LPAREN, callNode);
-        parseAtomic(callNode);
-        expect(TokenType.COMMA, callNode);
-        parseAtomic(callNode);
-        expect(TokenType.COMMA, callNode);
-        parseAtomic(callNode);
+        List<String> argumentTypes = parseArguments(callNode, signature.getParamTypes()); // Match arguments
         expect(TokenType.RPAREN, callNode);
+
+        // Check if the number and types of arguments match the function signature
+        if (argumentTypes.size() != signature.getParamTypes().size()) {
+            throw new Exception("Function " + funcToken.data + " called with incorrect number of arguments.");
+        }
+        for (int i = 0; i < argumentTypes.size(); i++) {
+            if (!argumentTypes.get(i).equals(signature.getParamTypes().get(i))) {
+                throw new Exception("Argument type mismatch in function call to " + funcToken.data);
+            }
+        }
     }
 
-    private void parseArguments(Node parentNode, List<String> expectedTypes) throws Exception {
-        // implementation of argument parsing and type checking
+    private List<String> parseArguments(Node parentNode, List<String> expectedTypes) throws Exception {
+        List<String> argumentTypes = new ArrayList<>();
+        Token token = getCurrentToken();
+        if (token.type == TokenType.VNAME || token.type == TokenType.CONST) {
+            Node argumentsNode = new Node(nodeIdCounter++, "ARGUMENTS");
+            syntaxTree.addInnerNode(argumentsNode);
+            parentNode.addChild(argumentsNode.unid);
+
+            argumentTypes.add(parseAtomic(argumentsNode));
+
+            if (getCurrentToken().type == TokenType.COMMA) {
+                consume(); // Consume ',' and parse next argument
+                argumentTypes.addAll(parseArguments(argumentsNode, expectedTypes));
+            }
+        }
+        return argumentTypes;
     }
 
     // Helper function to check if a variable is declared in any active scope
@@ -352,7 +385,7 @@ public class RecSPLParser {
         Token token = getCurrentToken();
         if (token != null && (token.type == TokenType.NUM || token.type == TokenType.VOID)) {
             Node functionsNode = new Node(nodeIdCounter++, "FUNCTIONS");
-            syntaxTree.addInnerNode(parentNode);
+            syntaxTree.addInnerNode(functionsNode);
             parentNode.addChild(functionsNode.unid);
 
             parseDecl(functionsNode); // Parse a single function declaration
@@ -370,8 +403,8 @@ public class RecSPLParser {
         syntaxTree.addInnerNode(declNode);
         parentNode.addChild(declNode.unid);
 
-        parseHeader(declNode); // Parse the function header
-        parseBody(declNode);   // Parse the function body
+        parseHeader(declNode);
+        parseBody(declNode);
     }
 
 // <HEADER> ::= FTYP FNAME( VNAME , VNAME , VNAME )
@@ -380,15 +413,41 @@ public class RecSPLParser {
         syntaxTree.addInnerNode(headerNode);
         parentNode.addChild(headerNode.unid);
 
-        parseFType(headerNode);  // Parse function return type (num or void)
-        expect(TokenType.FNAME, headerNode); // Expect a function name (FNAME)
-        expect(TokenType.LPAREN, headerNode); // Expect '('
-        expect(TokenType.VNAME, headerNode);  // Expect first VNAME (parameter)
-        expect(TokenType.COMMA, headerNode);
-        expect(TokenType.VNAME, headerNode);  // Expect second VNAME (parameter)
-        expect(TokenType.COMMA, headerNode);
-        expect(TokenType.VNAME, headerNode);  // Expect third VNAME (parameter)
-        expect(TokenType.RPAREN, headerNode); // Expect ')'
+        String returnType = parseFType(headerNode); // Parse function return type
+        Token funcToken = getCurrentToken();
+        expect(TokenType.FNAME, headerNode); // Parse function name
+        String functionName = funcToken.data;
+
+        expect(TokenType.LPAREN, headerNode); // Parse '('
+        List<String> parameterTypes = parseParams(headerNode); // Parse parameters
+        expect(TokenType.RPAREN, headerNode); // Parse ')'
+
+        // Add function signature to the function table
+        if (functionTable.containsKey(functionName)) {
+            throw new Exception("Function " + functionName + " is already declared.");
+        } else {
+            functionTable.put(functionName, new FunctionSignature(returnType, parameterTypes));
+        }
+    }
+
+    private List<String> parseParams(Node parentNode) throws Exception {
+        List<String> parameterTypes = new ArrayList<>();
+        Token token = getCurrentToken();
+        if (token.type == TokenType.VNAME) {
+            Node paramsNode = new Node(nodeIdCounter++, "PARAMS");
+            syntaxTree.addInnerNode(paramsNode);
+            parentNode.addChild(paramsNode.unid);
+
+            // String paramType = parseVType(paramsNode); // Parse parameter type
+            // parameterTypes.add(paramType);
+            expect(TokenType.VNAME, paramsNode); // Parse parameter name
+
+            if (getCurrentToken().type == TokenType.COMMA) {
+                consume(); // consume ','
+                parameterTypes.addAll(parseParams(paramsNode)); // Recursively parse more parameters
+            }
+        }
+        return parameterTypes;
     }
 
 // <BODY> ::= PROLOG LOCVARS ALGO EPILOG SUBFUNCS end
@@ -397,10 +456,11 @@ public class RecSPLParser {
         syntaxTree.addInnerNode(bodyNode);
         parentNode.addChild(bodyNode.unid);
 
-        expect(TokenType.PROLOG, bodyNode); // Expect '{'
-        parseLocVars(bodyNode);           // Parse local variables
-        parseAlgo(bodyNode);              // Parse the algorithm (ALGO)
-        expect(TokenType.EPILOG, bodyNode); // Expect '}'
+        expect(TokenType.PROLOG, bodyNode); // Parse 'PROLOG'
+        parseLocVars(bodyNode); // Parse local variables
+        parseAlgo(bodyNode); // Parse algorithm block
+        expect(TokenType.EPILOG, bodyNode); // Parse 'EPILOG'
+        expect(TokenType.END, bodyNode); // Parse 'end'
     }
 
 // <LOCVARS> ::= VTYP VNAME , VTYP VNAME , VTYP VNAME ,
@@ -423,8 +483,6 @@ public class RecSPLParser {
                 LocalScope.put(varToken.data, varType);
             }
 
-         
-
             if (getCurrentToken().type == TokenType.COMMA) {
                 consume();                 // consume the comma
                 parseLocVars(locVarsNode); // recursively parse more local variables
@@ -433,19 +491,46 @@ public class RecSPLParser {
     }
 
     // <VTYP> ::= num | text
-    private void parseFType(Node parentNode) throws Exception {
+    private String parseFType(Node parentNode) throws Exception {
         Node fTypeNode = new Node(nodeIdCounter++, "FTYP");
         syntaxTree.addInnerNode(fTypeNode);
         parentNode.addChild(fTypeNode.unid);
 
         Token token = getCurrentToken();
-        if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
+        if (token.type == TokenType.NUM || token.type == TokenType.VOID) {
             expect(token.type, fTypeNode); // match num or void
         } else {
             throw new Exception("Expected function type (num or void) but found " + token);
         }
+        return token.data;
     }
 
+    // private String parseFType(Node parentNode) throws Exception {
+    //     Node fTypeNode = new Node(nodeIdCounter++, "VTYPE");
+    //     syntaxTree.addInnerNode(fTypeNode);
+    //     parentNode.addChild(fTypeNode.unid);
+    //     Token currentToken = getCurrentToken();
+    //     if (null == currentToken.type) {
+    //         // If it's not a valid type, throw an error
+    //         throw new Exception("Expected a type, but found: " + currentToken.data);
+    //     } else // Check the token for a valid type
+    //     {
+    //         switch (currentToken.type) {
+    //             case NUM:
+    //                 // Add the type token  to the syntax tree
+    //                 expect(TokenType.NUM, fTypeNode);
+    //                 return currentToken.data;  // Return the type as a string
+    //             case TEXT:
+    //                 // Add the type token to the syntax tree
+    //                 expect(TokenType.VOID, fTypeNode);
+    //                 return currentToken.data;  // Return the type as a string
+    //             case VOID:
+    //             default:
+    //                 // If it's not a valid type, throw an error
+    //                 throw new Exception("Expected a type, but found: " + currentToken.data);
+    //         }
+    //     }
+    // }
     private String parseVType(Node parentNode) throws Exception {
         Node vTypeNode = new Node(nodeIdCounter++, "VTYPE");
         syntaxTree.addInnerNode(vTypeNode);
@@ -467,6 +552,7 @@ public class RecSPLParser {
                     // Add the type token to the syntax tree
                     expect(TokenType.TEXT, vTypeNode);
                     return currentToken.data;  // Return the type as a string
+                case VOID:
                 default:
                     // If it's not a valid type, throw an error
                     throw new Exception("Expected a type, but found: " + currentToken.data);
@@ -498,7 +584,7 @@ public class RecSPLParser {
 
             // Output the syntax tree
             RecSPLLexer.writeTokensToXML(tokens, xmlOutputFile);
-           parser.syntaxTree.toXML(xmlOutputFileSyntaxTree);
+            parser.syntaxTree.toXML(xmlOutputFileSyntaxTree);
             // System.out.println(syntaxTreeXML);
 
             System.out.println("Parsing completed successfully. No syntax errors found.");
