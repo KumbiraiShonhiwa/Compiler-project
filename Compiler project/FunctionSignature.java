@@ -9,6 +9,11 @@ public class FunctionSignature {
         this.returnType = returnType;
     }
 
+    FunctionSignature(String returnType, List<String> parameterTypes) {
+        this.paramTypes = parameterTypes;
+        this.returnType = returnType;
+    }
+
     // Getter for parameter types
     public List<String> getParamTypes() {
         return paramTypes;
