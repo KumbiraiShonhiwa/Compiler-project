@@ -477,7 +477,8 @@ public class RecSPLParser {
     public static void main(String[] args) {
         // Define the path to the XML file in the project directory
         String inputFile = "Compiler project//input8.txt"; // Adjust this path as per your project structure
-
+        String xmlOutputFile = "tokens_output.xml";
+        String xmlOutputFileSyntaxTree = "syntax_tree.xml";
         try {
             // Step 1: Read input file
             String input = new String(Files.readAllBytes(Paths.get(inputFile)));
@@ -496,8 +497,9 @@ public class RecSPLParser {
             parser.parseProgram(); // Start parsing the program
 
             // Output the syntax tree
-            String syntaxTreeXML = parser.syntaxTree.toXML();
-            System.out.println(syntaxTreeXML);
+            RecSPLLexer.writeTokensToXML(tokens, xmlOutputFile);
+           parser.syntaxTree.toXML(xmlOutputFileSyntaxTree);
+            // System.out.println(syntaxTreeXML);
 
             System.out.println("Parsing completed successfully. No syntax errors found.");
         } catch (Exception e) {
