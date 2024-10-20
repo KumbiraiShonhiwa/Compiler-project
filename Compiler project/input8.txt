@@ -4,7 +4,7 @@ begin
     V_a = 10;
     V_b = 5;
     V_c = 3;
-   
+    F_localfunc(V_a,V_b,V_c);
    
 end
 

@@ -47,6 +47,7 @@ public class RecSPLParser {
     private SyntaxTree syntaxTree;
     private Stack<Map<String, String>> symbolTableStack;
     private Map<String, FunctionSignature> functionTable;
+    private String darkart = "darkart";
 
     private int getNextNodeId() {
         return nodeIdCounter++;
@@ -63,12 +64,33 @@ public class RecSPLParser {
         this.symbolTableStack.push(new HashMap<>());
     }
 
+    public RecSPLParser(RecSPLParser parser, Node node) {
+        this.tokens = parser.tokens;
+        this.currentTokenIndex = 0;
+        this.syntaxTree = new SyntaxTree(node);
+        this.symbolTableStack = new Stack<>();
+        this.functionTable = parser.functionTable;
+        System.out.println("Function table size: " + functionTable.size());
+        functionTable.forEach((key, value) -> {
+            System.out.println(key + " : " + value);
+            System.out.println(value.getParamTypes());
+        });
+        // Push the global scope onto the stack
+        this.symbolTableStack.push(new HashMap<>());
+
+    }
+
     private Token getCurrentToken() {
         if (currentTokenIndex < tokens.size()) {
             return tokens.get(currentTokenIndex);
         } else {
             return null; // End of input
         }
+
+    }
+
+    public Map<String, FunctionSignature> getFunctionTable() {
+        return functionTable;
     }
 
     private void consume() {
@@ -151,21 +173,23 @@ public class RecSPLParser {
         if (token == null) {
             return;
         }
+        if (token.type != TokenType.VOID && token.type != TokenType.NUM) {
 
-        expect(TokenType.BEGIN, algoNode);
+            expect(TokenType.BEGIN, algoNode);
 
-        // Push a new scope (local to the algorithm block)
-        symbolTableStack.push(new HashMap<>());
+            // Push a new scope (local to the algorithm block)
+            symbolTableStack.push(new HashMap<>());
 
-        parseInstruc(algoNode);
+            parseInstruc(algoNode);
 
-        // Pop the local scope
-        symbolTableStack.pop();
+            // Pop the local scope
+            symbolTableStack.pop();
 
-        expect(TokenType.END, algoNode);
+            expect(TokenType.END, algoNode);
+        }
     }
-
     // <INSTRUC> ::= COMMAND ; INSTRUC | // nullable
+
     public void parseInstruc(Node parentNode) throws Exception {
         Token token = getCurrentToken();
         if (token != null && token.type != TokenType.END) {
@@ -272,23 +296,46 @@ public class RecSPLParser {
         expect(TokenType.FNAME, callNode);
 
         // Check if the function is declared
-        if (!functionTable.containsKey(funcToken.data)) {
-            throw new Exception("Function " + funcToken.data + " not declared.");
-        }
+        if (darkart.equals("notdarkart")) {
+            System.out.println("Not Dark art");
 
-        FunctionSignature signature = functionTable.get(funcToken.data);
-        expect(TokenType.LPAREN, callNode);
-        List<String> argumentTypes = parseArguments(callNode, signature.getParamTypes()); // Match arguments
-        expect(TokenType.RPAREN, callNode);
-
-        // Check if the number and types of arguments match the function signature
-        if (argumentTypes.size() != signature.getParamTypes().size()) {
-            throw new Exception("Function " + funcToken.data + " called with incorrect number of arguments.");
-        }
-        for (int i = 0; i < argumentTypes.size(); i++) {
-            if (!argumentTypes.get(i).equals(signature.getParamTypes().get(i))) {
-                throw new Exception("Argument type mismatch in function call to " + funcToken.data);
+            if (!functionTable.containsKey(funcToken.data)) {
+                throw new Exception("Function " + funcToken.data + " not declared.");
             }
+            if (functionTable == null) {
+                System.out.println("Function table is null");
+            }
+            FunctionSignature signature = functionTable.get(funcToken.data);
+            expect(TokenType.LPAREN, callNode);
+            List<String> argumentTypes = parseArguments(callNode, signature.getParamTypes()); // Match arguments
+            expect(TokenType.RPAREN, callNode);
+
+            System.out.println(argumentTypes.size());
+            System.out.println(signature.getParamTypes().size());
+
+            // Check if the number and types of arguments match the function signature
+            if (signature.matchesArgumentTypes(argumentTypes)) {
+                throw new Exception("Function " + funcToken.data + " called with incorrect number of arguments.");
+            }
+
+            for (int i = 0; i < functionTable.size(); i++) {
+                if (signature == functionTable.get(funcToken.data)) {
+                    System.out.println("Function signature matches");
+                    functionTable.remove(funcToken.data);
+                } else {
+                    System.out.println("Function signature does not match");
+                }
+            }
+
+        } else {
+
+            expect(TokenType.LPAREN, callNode);
+            parseAtomic(callNode);
+            expect(TokenType.COMMA, callNode);
+            parseAtomic(callNode);
+            expect(TokenType.COMMA, callNode);
+            parseAtomic(callNode);
+            expect(TokenType.RPAREN, callNode);
         }
     }
 
@@ -580,7 +627,17 @@ public class RecSPLParser {
             Node rootNode = new Node(0, "ROOT");
             RecSPLParser parser = new RecSPLParser(tokens, rootNode); // Pass tokens to the parser
 
-            parser.parseProgram(); // Start parsing the program
+            parser.parseProgram(); // Start parsing the 
+
+            parser.functionTable.forEach((key, value) -> {
+                System.out.println(key + " : " + value);
+                System.out.println(value.getParamTypes());
+            });
+            // Step 4: Semantic Analysis of functions
+            Node functionNode = new Node(0, "ROOT");
+            RecSPLParser parserFunction = new RecSPLParser(parser, functionNode);
+            parserFunction.darkart = "notdarkart";
+            parserFunction.parseProgram();
 
             // Output the syntax tree
             RecSPLLexer.writeTokensToXML(tokens, xmlOutputFile);
