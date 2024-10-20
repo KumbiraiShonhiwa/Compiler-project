@@ -109,8 +109,10 @@ public class RecSPLParser {
     // <GLOBVARS> ::= VTYP VNAME , GLOBVARS | // nullable
     public void parseGlobVars(Node parentNode) throws Exception {
         Token token = getCurrentToken();
-        if (token.type == TokenType.VTYP) {
+        if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
+            
             Node globVarsNode = new Node(nodeIdCounter++, "GLOBVARS");
+            syntaxTree.addInnerNode(globVarsNode);
             parentNode.addChild(globVarsNode.unid);
 
             String varType = parseVType(globVarsNode);
@@ -257,14 +259,17 @@ public class RecSPLParser {
         expect(TokenType.FNAME, callNode);
 
         // Check if the function is declared
-        if (!functionTable.containsKey(funcToken.data)) {
-            throw new Exception("Function " + funcToken.data + " not declared.");
-        }
-
+        // if (!functionTable.containsKey(funcToken.data)) {
+        //     throw new Exception("Function " + funcToken.data + " not declared.");
+        // }
         // Check the argument types against the function signature
-        FunctionSignature signature = functionTable.get(funcToken.data);
+        // FunctionSignature signature = functionTable.get(funcToken.data);
         expect(TokenType.LPAREN, callNode);
-        parseArguments(callNode, signature.getParamTypes());
+        parseAtomic(callNode);
+        expect(TokenType.COMMA, callNode);
+        parseAtomic(callNode);
+        expect(TokenType.COMMA, callNode);
+        parseAtomic(callNode);
         expect(TokenType.RPAREN, callNode);
     }
 
@@ -345,13 +350,17 @@ public class RecSPLParser {
     // <FUNCTIONS> ::= // nullable | DECL FUNCTIONS
     public void parseFunctions(Node parentNode) throws Exception {
         Token token = getCurrentToken();
-        if (token != null && (token.type == TokenType.FTYP)) {
+        if (token != null && (token.type == TokenType.NUM || token.type == TokenType.VOID)) {
             Node functionsNode = new Node(nodeIdCounter++, "FUNCTIONS");
             syntaxTree.addInnerNode(parentNode);
             parentNode.addChild(functionsNode.unid);
 
             parseDecl(functionsNode); // Parse a single function declaration
             parseFunctions(functionsNode); // Recursively parse more functions (if any)
+        } else if (token == null) {
+            System.out.println("End of input");
+        } else if (token.type != TokenType.NUM && token.type != TokenType.VOID) {
+            throw new Exception("Expected function type but found " + token);
         }
     }
 
@@ -397,13 +406,25 @@ public class RecSPLParser {
 // <LOCVARS> ::= VTYP VNAME , VTYP VNAME , VTYP VNAME ,
     private void parseLocVars(Node parentNode) throws Exception {
         Token token = getCurrentToken();
-        if (token.type == TokenType.VTYP) {
+        if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
+
             Node locVarsNode = new Node(nodeIdCounter++, "LOCVARS");
             syntaxTree.addInnerNode(locVarsNode);
             parentNode.addChild(locVarsNode.unid);
 
-            parseVType(locVarsNode);       // match variable type
+            String varType = parseVType(locVarsNode);
+            Token varToken = getCurrentToken();
             expect(TokenType.VNAME, locVarsNode);  // match variable name
+
+            Map<String, String> LocalScope = symbolTableStack.peek();
+            if (LocalScope.containsKey(varToken.data)) {
+                throw new Exception("Variable " + varToken.data + " already declared globally.");
+            } else {
+                LocalScope.put(varToken.data, varType);
+            }
+
+         
+
             if (getCurrentToken().type == TokenType.COMMA) {
                 consume();                 // consume the comma
                 parseLocVars(locVarsNode); // recursively parse more local variables
@@ -418,7 +439,7 @@ public class RecSPLParser {
         parentNode.addChild(fTypeNode.unid);
 
         Token token = getCurrentToken();
-        if (token.type == TokenType.FTYP) {
+        if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
             expect(token.type, fTypeNode); // match num or void
         } else {
             throw new Exception("Expected function type (num or void) but found " + token);
@@ -432,21 +453,32 @@ public class RecSPLParser {
 
         Token currentToken = getCurrentToken();
 
-        // Check the token for a valid type
-        if (currentToken.type == TokenType.VTYP) {
-            // Add the type token  to the syntax tree
-            expect(TokenType.VTYP, vTypeNode);
-            return currentToken.data;  // Return the type as a string
-        } else {
+        if (null == currentToken.type) {
             // If it's not a valid type, throw an error
             throw new Exception("Expected a type, but found: " + currentToken.data);
+        } else // Check the token for a valid type
+        {
+            switch (currentToken.type) {
+                case NUM:
+                    // Add the type token  to the syntax tree
+                    expect(TokenType.NUM, vTypeNode);
+                    return currentToken.data;  // Return the type as a string
+                case TEXT:
+                    // Add the type token to the syntax tree
+                    expect(TokenType.TEXT, vTypeNode);
+                    return currentToken.data;  // Return the type as a string
+                default:
+                    // If it's not a valid type, throw an error
+                    throw new Exception("Expected a type, but found: " + currentToken.data);
+            }
         }
     }
 
     public static void main(String[] args) {
         // Define the path to the XML file in the project directory
-        String inputFile = "Compiler project//input7.txt"; // Adjust this path as per your project structure
-
+        String inputFile = "Compiler project//input8.txt"; // Adjust this path as per your project structure
+        String xmlOutputFile = "tokens_output.xml";
+        String xmlOutputFileSyntaxTree = "syntax_tree.xml";
         try {
             // Step 1: Read input file
             String input = new String(Files.readAllBytes(Paths.get(inputFile)));
@@ -465,8 +497,9 @@ public class RecSPLParser {
             parser.parseProgram(); // Start parsing the program
 
             // Output the syntax tree
-            String syntaxTreeXML = parser.syntaxTree.toXML();
-            System.out.println(syntaxTreeXML);
+            RecSPLLexer.writeTokensToXML(tokens, xmlOutputFile);
+           parser.syntaxTree.toXML(xmlOutputFileSyntaxTree);
+            // System.out.println(syntaxTreeXML);
 
             System.out.println("Parsing completed successfully. No syntax errors found.");
         } catch (Exception e) {

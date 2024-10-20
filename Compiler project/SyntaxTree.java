@@ -1,6 +1,10 @@
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
 public class SyntaxTree {
 
     Node root;
@@ -19,7 +23,7 @@ public class SyntaxTree {
         leafNodes.add(leaf);
     }
 
-    public String toXML() {
+    public void toXML(String outputFilePath) throws IOException {
         StringBuilder xml = new StringBuilder("<SYNTREE>\n");
 
         // Root Node
@@ -48,6 +52,11 @@ public class SyntaxTree {
         xml.append("</LEAFNODES>\n");
 
         xml.append("</SYNTREE>");
-        return xml.toString();
+
+        // Write the XML content to the specified output file
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath))) {
+            writer.write(xml.toString());
+        }
+
     }
 }

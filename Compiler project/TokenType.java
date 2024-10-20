@@ -16,8 +16,7 @@ public enum TokenType {
     WHITESPACE("[ \t\f\r\n]+"),
     BINOP("eq|grt|add|sub|mul|div|or|and"),
     UNOP("not|sqrt"),
-    VTYP("num|text"),
-    FTYP("num|void");
+    TEXT("text"),NUM("num"),VOID("void");
 
     public final String pattern;
 

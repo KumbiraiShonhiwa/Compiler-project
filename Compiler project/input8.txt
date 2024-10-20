@@ -4,8 +4,27 @@ begin
     V_a = 10;
     V_b = 5;
     V_c = 3;
-    V_result1 = 9;
-    V_result2 = V_result1;
+   
+    F_mainfunc(V_result1, V_b, V_c);
 end
 
 
+
+num F_localfunc(V_a, V_b, V_c)
+{
+    num V_innerresult
+
+    begin
+        V_innerresult = 0;
+        if grt(V_innerresult, V_c) then
+            begin
+                print "Inner";
+            end
+        else
+            begin
+                print "Equal";
+            end
+        ;
+       return V_innerresult;
+    end
+}
