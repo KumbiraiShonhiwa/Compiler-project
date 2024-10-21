@@ -14,8 +14,12 @@ public class Node {
     public void addChild(int childId) {
         children.add(childId);
     }
+
     public void setSymbol(String symbol) {
         this.symbol = symbol;
+    }
+    public String getSymbol() {
+        return symbol;
     }
     public String toXML() {
         StringBuilder xml = new StringBuilder();
@@ -34,5 +38,9 @@ public class Node {
 
     public int getUnid() {
         return unid;
+    }
+
+    public List<Integer> getChildren() {
+        return children;
     }
 }
