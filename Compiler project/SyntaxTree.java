@@ -31,7 +31,7 @@ public class SyntaxTree {
         xml.append("<UNID>").append(root.unid).append("</UNID>\n");
         xml.append("<SYMB>").append(root.symbol).append("</SYMB>\n");
         xml.append("<CHILDREN>\n");
-        for (int childId : root.children) {
+        for (Node childId : root.children) {
             xml.append("<ID>").append(childId).append("</ID>\n");
         }
         xml.append("</CHILDREN>\n");

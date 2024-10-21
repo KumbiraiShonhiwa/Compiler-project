@@ -130,7 +130,7 @@ public class RecSPLParser {
             System.out.println("Function table is empty");
         } else {
             functionTable = new HashMap<>();
-        
+
         }
         parseFunctions(programNode);         // match functions
         System.out.println("End of program");
@@ -174,6 +174,7 @@ public class RecSPLParser {
 
     // <ALGO> ::= begin INSTRUC end
     public void parseAlgo(Node parentNode) throws Exception {
+        System.out.println("Parsing algorithm block");
         Node algoNode = new Node(nodeIdCounter++, "ALGO");
         parentNode.addChild(algoNode);
         Token token = getCurrentToken();
@@ -257,7 +258,7 @@ public class RecSPLParser {
             return getVariableType(token.data); // return the type of the variable
         } else if (token.type == TokenType.CONST) {
             expect(TokenType.CONST, parentNode); // match constant
-            return "text"; // Constants are treated as "text"
+            return getAssignedType(token.data); // Constants are treated as "text"
         } else {
             throw new Exception("Expected atomic value but found " + token.type);
         }
@@ -277,20 +278,27 @@ public class RecSPLParser {
         }
 
         Token token = getCurrentToken();
-        if (token.type == TokenType.EQUALS) {
-            consume(); // match '='
-            parseTerm(assignNode);
-
-            // Check if assigned value matches the declared type
-            String varType = getVariableType(varToken.data);
-            String assignedType = inferExpressionType();
-            if (!varType.equals(assignedType)) {
-                throw new Exception("Type mismatch: cannot assign " + assignedType + " to " + varType + ".");
-            }
-        } else if (token.type == TokenType.INPUT) {
-            consume(); // match '< input'
-        } else {
+        if (null == token.type) {
             throw new Exception("Invalid assignment syntax");
+        } else {
+            switch (token.type) {
+                case EQUALS:
+                    consume(); // match '='
+                    String assignedType = parseTerm(assignNode);
+                    // Check if assigned value matches the declared type
+                    String varType = getVariableType(varToken.data);
+                    System.out.println("Variable type: " + varType);
+                    System.out.println("Assigned type: " + assignedType);
+                    if (!varType.equals(assignedType)) {
+                        throw new Exception("Type mismatch: cannot assign " + assignedType + " to " + varType + ".");
+                    }
+                    break;
+                case INPUT:
+                    consume(); // match '< input'
+                    break;
+                default:
+                    throw new Exception("Invalid assignment syntax");
+            }
         }
     }
 
@@ -377,16 +385,26 @@ public class RecSPLParser {
     private String getVariableType(String varName) {
         for (Map<String, String> scope : symbolTableStack) {
             if (scope.containsKey(varName)) {
+                System.out.println("Variable " + varName + " found in scope");
+                System.out.println("Variable type: " + scope.get(varName));
                 return scope.get(varName);
             }
         }
         return null; // Variable not found
     }
 
+    private String getAssignedType(String assignName) {
+        if (assignName.matches("\"[A-Z][a-z0-9]{0,7}\"")) {
+            return "text";
+        } else {
+            return "num";
+        }
+    }
+
     // Helper function to infer the type of an expression
     private String inferExpressionType() {
         // Example implementation, returning "num" or "text" based on the expression
-        return "num"; // placeholder
+        return "text"; // placeholder
     }
 
     private void parseBranch(Node parentNode) throws Exception {
@@ -426,12 +444,12 @@ public class RecSPLParser {
         // parseAtomic(simpleNode);
     }
 
-    private void parseTerm(Node parentNode) throws Exception {
+    private String parseTerm(Node parentNode) throws Exception {
         Node termNode = new Node(nodeIdCounter++, "TERM");
         syntaxTree.addInnerNode(termNode);
         parentNode.addChild(termNode);
 
-        parseAtomic(termNode);
+        return parseAtomic(termNode);
     }
 
     // <FUNCTIONS> ::= // nullable | DECL FUNCTIONS
@@ -668,9 +686,11 @@ public class RecSPLParser {
             parserFunction.parseProgram();
 
             // Output the syntax tree
-            // RecSPLLexer.writeTokensToXML(tokens, xmlOutputFile);
-            // parser.syntaxTree.toXML(xmlOutputFileSyntaxTree);
+            RecSPLLexer.writeTokensToXML(tokens, xmlOutputFile);
+            parser.syntaxTree.toXML(xmlOutputFileSyntaxTree);
             // System.out.println(syntaxTreeXML);
+
+            // Step 5: Typechecking
             System.out.println("Parsing completed successfully. No syntax errors found.");
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
