@@ -126,6 +126,12 @@ public class RecSPLParser {
         expect(TokenType.MAIN, programNode); // match 'main'
         parseGlobVars(programNode);          // match global variables
         parseAlgo(programNode);              // match algorithm block
+        if (functionTable.size() == 0) {
+            System.out.println("Function table is empty");
+        } else {
+            functionTable = new HashMap<>();
+        
+        }
         parseFunctions(programNode);         // match functions
         System.out.println("End of program");
     }
