@@ -1,15 +1,18 @@
 import java.util.List;
 
 public class FunctionSignature {
+    private String functionName;      // The name of the function
     private List<String> paramTypes;  // The list of parameter types
     private String returnType;        // The return type of the function
 
-    public FunctionSignature(List<String> paramTypes, String returnType) {
+    public FunctionSignature(String functionName,List<String> paramTypes, String returnType) {
+        this.functionName = functionName;
         this.paramTypes = paramTypes;
         this.returnType = returnType;
     }
 
-    FunctionSignature(String returnType, List<String> parameterTypes) {
+    FunctionSignature(String functionName,String returnType, List<String> parameterTypes) {
+        this.functionName = functionName;
         this.paramTypes = parameterTypes;
         this.returnType = returnType;
     }
@@ -22,6 +25,10 @@ public class FunctionSignature {
     // Getter for return type
     public String getReturnType() {
         return returnType;
+    }
+
+    public String getFunctionName() {
+        return functionName;
     }
 
     // Helper function to check if the provided arguments match the signature

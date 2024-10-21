@@ -127,6 +127,7 @@ public class RecSPLParser {
         parseGlobVars(programNode);          // match global variables
         parseAlgo(programNode);              // match algorithm block
         parseFunctions(programNode);         // match functions
+        System.out.println("End of program");
     }
 
     // <GLOBVARS> ::= VTYP VNAME , GLOBVARS | // nullable
@@ -430,7 +431,7 @@ public class RecSPLParser {
     // <FUNCTIONS> ::= // nullable | DECL FUNCTIONS
     public void parseFunctions(Node parentNode) throws Exception {
         Token token = getCurrentToken();
-        if (token != null  && token.type == TokenType.END) {
+        if (token != null && token.type == TokenType.END) {
             return;
         }
         if (token != null && (token.type == TokenType.NUM || token.type == TokenType.VOID)) {
@@ -438,6 +439,7 @@ public class RecSPLParser {
             syntaxTree.addInnerNode(functionsNode);
             parentNode.addChild(functionsNode);
 
+            symbolTableStack.add(new HashMap<>()); // Push a new scope for the function
             parseDecl(functionsNode); // Parse a single function declaration
             parseFunctions(functionsNode); // Recursively parse more functions (if any)
         } else if (token == null) {
@@ -473,11 +475,25 @@ public class RecSPLParser {
         expect(TokenType.RPAREN, headerNode); // Parse ')'
 
         // Add function signature to the function table
-        if (functionTable.containsKey(functionName)) {
+        for (int i = 0; i < functionTable.size(); i++) {
+            System.out.println(funcToken.data);
+            System.out.println(functionTable.get(funcToken.data));
+        }
+        if (searchForFunctionName(funcToken.data)) {
             throw new Exception("Function " + functionName + " is already declared.");
         } else {
-            functionTable.put(functionName, new FunctionSignature(returnType, parameterTypes));
+            functionTable.put(functionName, new FunctionSignature(functionName, returnType, parameterTypes));
         }
+    }
+
+    private boolean searchForFunctionName(String functionName) {
+        for (int i = 0; i < functionTable.size(); i++) {
+            if (functionTable.get(functionName) != null) {
+                System.out.println(functionTable);
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<String> parseParams(Node parentNode) throws Exception {
@@ -510,8 +526,10 @@ public class RecSPLParser {
         parseLocVars(bodyNode); // Parse local variables
         parseAlgo(bodyNode); // Parse algorithm block
         expect(TokenType.EPILOG, bodyNode); // Parse 'EPILOG'
+        System.out.println("Read the epilog");
         parseFunctions(bodyNode); // Parse functions
         expect(TokenType.END, bodyNode); // Parse 'end'
+        System.out.println("Read the end");
     }
 
 // <LOCVARS> ::= VTYP VNAME , VTYP VNAME , VTYP VNAME ,
@@ -647,7 +665,6 @@ public class RecSPLParser {
             // RecSPLLexer.writeTokensToXML(tokens, xmlOutputFile);
             // parser.syntaxTree.toXML(xmlOutputFileSyntaxTree);
             // System.out.println(syntaxTreeXML);
-
             System.out.println("Parsing completed successfully. No syntax errors found.");
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
