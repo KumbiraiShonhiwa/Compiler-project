@@ -5,13 +5,13 @@ import java.util.List;
 public class Node {
     int unid;
     String symbol;
-    List<Integer> children = new ArrayList<Integer>();
+    List<Node> children = new ArrayList<Node>();
     public Node(int unid, String symbol) {
         this.unid = unid;
         this.symbol = symbol;
     }
 
-    public void addChild(int childId) {
+    public void addChild(Node childId) {
         children.add(childId);
     }
     public void setSymbol(String symbol) {
@@ -24,7 +24,7 @@ public class Node {
         xml.append("<UNID>").append(unid).append("</UNID>\n");
         xml.append("<SYMB>").append(symbol).append("</SYMB>\n");
         xml.append("<CHILDREN>\n");
-        for (int childId : children) {
+        for (Node childId : children) {
             xml.append("<ID>").append(childId).append("</ID>\n");
         }
         xml.append("</CHILDREN>\n");

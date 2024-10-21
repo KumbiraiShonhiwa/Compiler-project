@@ -1,12 +1,14 @@
-public class LeafNode {
+public class LeafNode extends Node
+ {
     int parentId; // Parent Node ID
     int unid; // Unique Node ID
     String terminal; // Terminal symbol
 
     public LeafNode(int parentId, int unid, String terminal) {
+        super(unid, terminal);
         this.parentId = parentId;
-        this.unid = unid;
-        this.terminal = terminal;
+      
+       
     }
 
     public String toXML() {
