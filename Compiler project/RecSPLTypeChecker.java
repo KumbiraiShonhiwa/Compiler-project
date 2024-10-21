@@ -79,7 +79,7 @@ public class RecSPLTypeChecker {
                 }
             }
         }
-        // Handle other node types similarly
+        
         return true;
     }
 }
