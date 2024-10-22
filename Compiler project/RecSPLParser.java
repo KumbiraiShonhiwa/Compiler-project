@@ -285,14 +285,14 @@ public class RecSPLParser {
             switch (token.type) {
                 case EQUALS:
                     consume(); // match '='
-                    String assignedType = parseTerm(assignNode);
+                    parseTerm(assignNode);
                     // Check if assigned value matches the declared type
-                    String varType = getVariableType(varToken.data);
-                    System.out.println("Variable type: " + varType);
-                    System.out.println("Assigned type: " + assignedType);
-                    if (!varType.equals(assignedType)) {
-                        throw new Exception("Type mismatch: cannot assign " + assignedType + " to " + varType + ".");
-                    }
+                    // String varType = getVariableType(varToken.data);
+                    // System.out.println("Variable type: " + varType);
+                    // System.out.println("Assigned type: " + assignedType);
+                    // if (!varType.equals(assignedType)) {
+                    //     throw new Exception("Type mismatch: cannot assign " + assignedType + " to " + varType + ".");
+                    // }
                     break;
                 case INPUT:
                     consume(); // match '< input'
@@ -422,35 +422,160 @@ public class RecSPLParser {
     }
 
     private void parseCond(Node parentNode) throws Exception {
-        Node condNode = new Node(nodeIdCounter++, "COND", parentNode);
-        syntaxTree.addInnerNode(condNode);
-        parentNode.addChild(condNode);
+        Token currentToken = getCurrentToken();
+        Node condNode = new Node(nodeIdCounter++, "COND"); // If it's a BINOP or UNOP, decide whether it's SIMPLE or COMPOSITE based on next tokens
+        if (currentToken.type == TokenType.BINOP) {
+            // Could be either SIMPLE or COMPOSITE
 
-        parseSimple(condNode);
+            expect(TokenType.BINOP, condNode);  // Expect BINOP
+            expect(TokenType.LPAREN, condNode); // Expect '('
+            Token lookahead = getCurrentToken();
+
+            if (lookahead.type == TokenType.VNAME || lookahead.type == TokenType.CONST) {
+                // It's a SIMPLE condition
+                parseSimple(parentNode);
+            } else {
+                // It's a COMPOSITE condition
+                parseComposit(parentNode);
+            }
+        } else if (currentToken.type == TokenType.UNOP) {
+            // COMPOSITE condition with a unary operation
+            parseComposit(parentNode);
+        } else {
+            throw new Exception("Expected BINOP or UNOP in condition but found: " + currentToken.type);
+        }
     }
 
     private void parseSimple(Node parentNode) throws Exception {
-        Node simpleNode = new Node(nodeIdCounter++, "SIMPLE", parentNode);
+        Node simpleNode = new Node(nodeIdCounter++, "SIMPLE");
         syntaxTree.addInnerNode(simpleNode);
         parentNode.addChild(simpleNode);
-        expect(TokenType.BINOP, simpleNode); // BINOP can be eq, grt, etc.
-        expect(TokenType.LPAREN, simpleNode);
-        parseAtomic(simpleNode);
-        expect(TokenType.COMMA, simpleNode);
-        parseAtomic(simpleNode);
-        expect(TokenType.RPAREN, simpleNode);
 
-        // parseAtomic(simpleNode);
-        // expect(TokenType.BINOP, simpleNode); // BINOP can be eq, grt, etc.
-        // parseAtomic(simpleNode);
+        // expect(TokenType.BINOP, simpleNode);  // Expect BINOP
+        // expect(TokenType.LPAREN, simpleNode); // Expect '('
+        parseAtomic(simpleNode);              // Parse first ATOMIC
+        expect(TokenType.COMMA, simpleNode);  // Expect ','
+        parseAtomic(simpleNode);              // Parse second ATOMIC
+
+        expect(TokenType.RPAREN, simpleNode); // Expect ')'
+    }
+
+    // Parsing Composite Condition (COMPOSITE)
+    private void parseComposit(Node parentNode) throws Exception {
+        Node compositeNode = new Node(nodeIdCounter++, "COMPOSITE");
+        syntaxTree.addInnerNode(compositeNode);
+        parentNode.addChild(compositeNode);
+
+        Token currentToken = getCurrentToken();
+
+        if (currentToken.type == TokenType.UNOP) {
+            // COMPOSITE condition with a unary operation
+            expect(TokenType.UNOP, compositeNode);  // Expect UNOP
+            expect(TokenType.LPAREN, compositeNode); // Expect '('
+
+            parseSimple(compositeNode);              // Parse a single SIMPLE condition
+
+            expect(TokenType.RPAREN, compositeNode); // Expect ')'
+        } else if (currentToken.type == TokenType.BINOP) {
+            // COMPOSITE condition with a binary operation
+            // expect(TokenType.BINOP, compositeNode);  // Expect BINOP
+            // expect(TokenType.LPAREN, compositeNode); // Expect '('
+
+            parseSimple(compositeNode);              // Parse the first SIMPLE condition
+            expect(TokenType.COMMA, compositeNode);  // Expect ','
+            parseSimple(compositeNode);              // Parse the second SIMPLE condition
+
+            expect(TokenType.RPAREN, compositeNode); // Expect ')'
+        } else {
+            throw new Exception("Expected UNOP or BINOP for COMPOSITE condition but found: " + currentToken.type);
+        }
     }
 
     private String parseTerm(Node parentNode) throws Exception {
         Node termNode = new Node(nodeIdCounter++, "TERM", parentNode);
         syntaxTree.addInnerNode(termNode);
         parentNode.addChild(termNode);
+        Token token = getCurrentToken();
+        if (token != null && token.type == TokenType.FNAME) {
+            parseCall(termNode);
+        } else if (token != null && token.type == TokenType.VNAME || token.type == TokenType.CONST) {
+            parseAtomic(termNode);
+        } else if (token != null && token.type == TokenType.UNOP || token.type == TokenType.BINOP) {
+            parseOp(termNode);
+        } else {
+            throw new Exception("Expected term but found " + token);
+        }
+        return inferExpressionType();
+    }
 
-        return parseAtomic(termNode);
+    // Parsing OP (either Unary or Binary Operation)
+    private void parseOp(Node parentNode) throws Exception {
+        Token currentToken = getCurrentToken();
+
+        // Determine whether it's a unary or binary operation based on the next token
+        if (currentToken.type == TokenType.UNOP) {
+            // If it's a unary operation
+            parseUnaryOp(parentNode);
+        } else if (currentToken.type == TokenType.BINOP) {
+            // If it's a binary operation
+            parseBinaryOp(parentNode);
+        } else {
+            throw new Exception("Expected UNOP or BINOP, but found: " + currentToken.type);
+        }
+    }
+
+// Parsing Unary Operation
+    private void parseUnaryOp(Node parentNode) throws Exception {
+        Node unopNode = new Node(nodeIdCounter++, "UNOP");
+        syntaxTree.addInnerNode(unopNode);
+        parentNode.addChild(unopNode);
+
+        expect(TokenType.UNOP, unopNode); // Expect UNOP
+        expect(TokenType.LPAREN, unopNode); // Expect '('
+
+        parseArg(unopNode); // Parse the argument of the unary operation
+
+        expect(TokenType.RPAREN, unopNode); // Expect ')'
+    }
+
+// Parsing Binary Operation
+    private void parseBinaryOp(Node parentNode) throws Exception {
+        Node binopNode = new Node(nodeIdCounter++, "BINOP");
+        syntaxTree.addInnerNode(binopNode);
+        parentNode.addChild(binopNode);
+
+        expect(TokenType.BINOP, binopNode); // Expect BINOP
+        expect(TokenType.LPAREN, binopNode); // Expect '('
+
+        parseArg(binopNode); // Parse the first argument
+        expect(TokenType.COMMA, binopNode); // Expect ',' between arguments
+        parseArg(binopNode); // Parse the second argument
+
+        expect(TokenType.RPAREN, binopNode); // Expect ')'
+    }
+
+// Parsing Argument (either ATOMIC or OP)
+    private void parseArg(Node parentNode) throws Exception {
+        Token currentToken = getCurrentToken();
+
+        if (null == currentToken.type) {
+            throw new Exception("Expected ATOMIC or OP, but found: " + currentToken.type);
+        } else {
+            switch (currentToken.type) {
+                case VNAME:
+                case CONST:
+                    // If it's an atomic value (identifier or number)
+                    parseAtomic(parentNode);
+                    break;
+                case UNOP:
+                case BINOP:
+                    // If it's an operation (recursive parsing of OP)
+                    parseOp(parentNode);
+                    break;
+                default:
+                    throw new Exception("Expected ATOMIC or OP, but found: " + currentToken.type);
+            }
+        }
     }
 
     // <FUNCTIONS> ::= // nullable | DECL FUNCTIONS

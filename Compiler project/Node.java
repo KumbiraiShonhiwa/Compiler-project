@@ -36,16 +36,19 @@ public class Node {
     public String toXML() {
         StringBuilder xml = new StringBuilder();
         xml.append("<IN>\n");
-        xml.append("<PARENT>").append(parent.unid).append("</PARENT>\n");
-        xml.append("<UNID>").append(unid).append("</UNID>\n");
-        xml.append("<SYMB>").append(symbol).append("</SYMB>\n");
-        xml.append("<CHILDREN>\n");
-        for (Node childId : children) {
-            xml.append("<ID>").append(childId.unid).append("</ID>\n");
+        if (parent != null) {
+            xml.append("<PARENT>").append(parent.unid).append("</PARENT>\n");
+            xml.append("<UNID>").append(unid).append("</UNID>\n");
+            xml.append("<SYMB>").append(symbol).append("</SYMB>\n");
+            xml.append("<CHILDREN>\n");
+            for (Node childId : children) {
+                xml.append("<ID>").append(childId.unid).append("</ID>\n");
+            }
+            xml.append("</CHILDREN>\n");
+            xml.append("</IN>\n");
         }
-        xml.append("</CHILDREN>\n");
-        xml.append("</IN>\n");
         return xml.toString();
+
     }
 
     public int getUnid() {
