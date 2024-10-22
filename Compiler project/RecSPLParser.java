@@ -106,7 +106,8 @@ public class RecSPLParser {
         // parentNode.addChild(childNode);
         // consume();
         // Create a new leaf node for this token
-        LeafNode leafNode = new LeafNode(parentNode.getUnid(), getNextNodeId(), token.type.toString());
+        System.out.println("Creating leaf node for token: " + token.type.toString());
+        LeafNode leafNode = new LeafNode(parentNode.getUnid(), getNextNodeId(), token.data, token.type.toString());
 
         // Add the leaf node to the tree
         syntaxTree.addLeafNode(leafNode);
@@ -120,7 +121,7 @@ public class RecSPLParser {
     // Recursive Descent Functions
     // <PROG> ::= main GLOBVARS ALGO FUNCTIONS
     public void parseProgram() throws Exception {
-        Node programNode = new Node(nodeIdCounter++, "PROG");
+        Node programNode = new Node(nodeIdCounter++, "PROG", syntaxTree.root);
         this.syntaxTree.root.addChild(programNode);
 
         expect(TokenType.MAIN, programNode); // match 'main'
@@ -144,7 +145,7 @@ public class RecSPLParser {
         }
         if (token != null && token.type == TokenType.NUM || token.type == TokenType.TEXT) {
 
-            Node globVarsNode = new Node(nodeIdCounter++, "GLOBVARS");
+            Node globVarsNode = new Node(nodeIdCounter++, "GLOBVARS", parentNode);
             syntaxTree.addInnerNode(globVarsNode);
             parentNode.addChild(globVarsNode);
 
@@ -175,7 +176,7 @@ public class RecSPLParser {
     // <ALGO> ::= begin INSTRUC end
     public void parseAlgo(Node parentNode) throws Exception {
         System.out.println("Parsing algorithm block");
-        Node algoNode = new Node(nodeIdCounter++, "ALGO");
+        Node algoNode = new Node(nodeIdCounter++, "ALGO", parentNode);
         parentNode.addChild(algoNode);
         Token token = getCurrentToken();
         if (token == null) {
@@ -201,7 +202,7 @@ public class RecSPLParser {
     public void parseInstruc(Node parentNode) throws Exception {
         Token token = getCurrentToken();
         if (token != null && token.type != TokenType.END) {
-            Node instrucNode = new Node(nodeIdCounter++, "INSTRUC");
+            Node instrucNode = new Node(nodeIdCounter++, "INSTRUC", parentNode);
             parentNode.addChild(instrucNode);
 
             parseCommand(instrucNode);
@@ -212,7 +213,7 @@ public class RecSPLParser {
 
     // <COMMAND> ::= skip | halt | print ATOMIC | ASSIGN | CALL | BRANCH
     public void parseCommand(Node parentNode) throws Exception {
-        Node commandNode = new Node(getNextNodeId(), "COMMAND");
+        Node commandNode = new Node(getNextNodeId(), "COMMAND", parentNode);
         syntaxTree.addInnerNode(commandNode);
         parentNode.addChild(commandNode);
 
@@ -265,7 +266,7 @@ public class RecSPLParser {
     }
 
     private void parseAssign(Node parentNode) throws Exception {
-        Node assignNode = new Node(nodeIdCounter++, "ASSIGN");
+        Node assignNode = new Node(nodeIdCounter++, "ASSIGN", parentNode);
         syntaxTree.addInnerNode(assignNode);
         parentNode.addChild(assignNode);
 
@@ -303,7 +304,7 @@ public class RecSPLParser {
     }
 
     private void parseCall(Node parentNode) throws Exception {
-        Node callNode = new Node(nodeIdCounter++, "CALL");
+        Node callNode = new Node(nodeIdCounter++, "CALL", parentNode);
         syntaxTree.addInnerNode(callNode);
         parentNode.addChild(callNode);
 
@@ -358,7 +359,7 @@ public class RecSPLParser {
         List<String> argumentTypes = new ArrayList<>();
         Token token = getCurrentToken();
         if (token.type == TokenType.VNAME || token.type == TokenType.CONST) {
-            Node argumentsNode = new Node(nodeIdCounter++, "ARGUMENTS");
+            Node argumentsNode = new Node(nodeIdCounter++, "ARGUMENTS", parentNode);
             syntaxTree.addInnerNode(argumentsNode);
             parentNode.addChild(argumentsNode);
 
@@ -408,7 +409,7 @@ public class RecSPLParser {
     }
 
     private void parseBranch(Node parentNode) throws Exception {
-        Node branchNode = new Node(nodeIdCounter++, "BRANCH");
+        Node branchNode = new Node(nodeIdCounter++, "BRANCH", parentNode);
         syntaxTree.addInnerNode(branchNode);
         parentNode.addChild(branchNode);
 
@@ -421,7 +422,7 @@ public class RecSPLParser {
     }
 
     private void parseCond(Node parentNode) throws Exception {
-        Node condNode = new Node(nodeIdCounter++, "COND");
+        Node condNode = new Node(nodeIdCounter++, "COND", parentNode);
         syntaxTree.addInnerNode(condNode);
         parentNode.addChild(condNode);
 
@@ -429,7 +430,7 @@ public class RecSPLParser {
     }
 
     private void parseSimple(Node parentNode) throws Exception {
-        Node simpleNode = new Node(nodeIdCounter++, "SIMPLE");
+        Node simpleNode = new Node(nodeIdCounter++, "SIMPLE", parentNode);
         syntaxTree.addInnerNode(simpleNode);
         parentNode.addChild(simpleNode);
         expect(TokenType.BINOP, simpleNode); // BINOP can be eq, grt, etc.
@@ -445,7 +446,7 @@ public class RecSPLParser {
     }
 
     private String parseTerm(Node parentNode) throws Exception {
-        Node termNode = new Node(nodeIdCounter++, "TERM");
+        Node termNode = new Node(nodeIdCounter++, "TERM", parentNode);
         syntaxTree.addInnerNode(termNode);
         parentNode.addChild(termNode);
 
@@ -459,7 +460,7 @@ public class RecSPLParser {
             return;
         }
         if (token != null && (token.type == TokenType.NUM || token.type == TokenType.VOID)) {
-            Node functionsNode = new Node(nodeIdCounter++, "FUNCTIONS");
+            Node functionsNode = new Node(nodeIdCounter++, "FUNCTIONS", parentNode);
             syntaxTree.addInnerNode(functionsNode);
             parentNode.addChild(functionsNode);
 
@@ -475,7 +476,7 @@ public class RecSPLParser {
 
     // <DECL> ::= HEADER BODY
     private void parseDecl(Node parentNode) throws Exception {
-        Node declNode = new Node(nodeIdCounter++, "DECL");
+        Node declNode = new Node(nodeIdCounter++, "DECL", parentNode);
         syntaxTree.addInnerNode(declNode);
         parentNode.addChild(declNode);
 
@@ -485,7 +486,7 @@ public class RecSPLParser {
 
 // <HEADER> ::= FTYP FNAME( VNAME , VNAME , VNAME )
     private void parseHeader(Node parentNode) throws Exception {
-        Node headerNode = new Node(nodeIdCounter++, "HEADER");
+        Node headerNode = new Node(nodeIdCounter++, "HEADER", parentNode);
         syntaxTree.addInnerNode(headerNode);
         parentNode.addChild(headerNode);
 
@@ -524,7 +525,7 @@ public class RecSPLParser {
         List<String> parameterTypes = new ArrayList<>();
         Token token = getCurrentToken();
         if (token.type == TokenType.VNAME) {
-            Node paramsNode = new Node(nodeIdCounter++, "PARAMS");
+            Node paramsNode = new Node(nodeIdCounter++, "PARAMS", parentNode);
             syntaxTree.addInnerNode(paramsNode);
             parentNode.addChild(paramsNode);
 
@@ -542,7 +543,7 @@ public class RecSPLParser {
 
 // <BODY> ::= PROLOG LOCVARS ALGO EPILOG SUBFUNCS end
     private void parseBody(Node parentNode) throws Exception {
-        Node bodyNode = new Node(nodeIdCounter++, "BODY");
+        Node bodyNode = new Node(nodeIdCounter++, "BODY", parentNode);
         syntaxTree.addInnerNode(bodyNode);
         parentNode.addChild(bodyNode);
 
@@ -561,7 +562,7 @@ public class RecSPLParser {
         Token token = getCurrentToken();
         if (token.type == TokenType.NUM || token.type == TokenType.TEXT) {
 
-            Node locVarsNode = new Node(nodeIdCounter++, "LOCVARS");
+            Node locVarsNode = new Node(nodeIdCounter++, "LOCVARS", parentNode);
             syntaxTree.addInnerNode(locVarsNode);
             parentNode.addChild(locVarsNode);
 
@@ -585,7 +586,7 @@ public class RecSPLParser {
 
     // <VTYP> ::= num | text
     private String parseFType(Node parentNode) throws Exception {
-        Node fTypeNode = new Node(nodeIdCounter++, "FTYP");
+        Node fTypeNode = new Node(nodeIdCounter++, "FTYP", parentNode);
         syntaxTree.addInnerNode(fTypeNode);
         parentNode.addChild(fTypeNode);
 
@@ -625,7 +626,7 @@ public class RecSPLParser {
     //     }
     // }
     private String parseVType(Node parentNode) throws Exception {
-        Node vTypeNode = new Node(nodeIdCounter++, "VTYPE");
+        Node vTypeNode = new Node(nodeIdCounter++, "VTYPE", parentNode);
         syntaxTree.addInnerNode(vTypeNode);
         parentNode.addChild(vTypeNode);
 
@@ -670,7 +671,7 @@ public class RecSPLParser {
             }
 
             // Step 3: Parsing process        
-            Node rootNode = new Node(0, "ROOT");
+            Node rootNode = new Node(0, "ROOT", null);
             RecSPLParser parser = new RecSPLParser(tokens, rootNode); // Pass tokens to the parser
 
             parser.parseProgram(); // Start parsing the 
@@ -680,7 +681,7 @@ public class RecSPLParser {
                 System.out.println(value.getParamTypes());
             });
             // Step 4: Semantic Analysis of functions
-            Node functionNode = new Node(0, "ROOT");
+            Node functionNode = new Node(0, "ROOT", null);
             RecSPLParser parserFunction = new RecSPLParser(parser, functionNode);
             parserFunction.darkart = "notdarkart";
             parserFunction.parseProgram();

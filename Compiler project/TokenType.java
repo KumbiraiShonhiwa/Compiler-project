@@ -23,4 +23,8 @@ public enum TokenType {
     private TokenType(String pattern) {
         this.pattern = pattern;
     }
+
+    public String getPattern() {
+        return pattern;
+    }
 }

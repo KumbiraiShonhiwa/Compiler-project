@@ -32,7 +32,10 @@ public class SyntaxTree {
         xml.append("<SYMB>").append(root.symbol).append("</SYMB>\n");
         xml.append("<CHILDREN>\n");
         for (Node childId : root.children) {
-            xml.append("<ID>").append(childId).append("</ID>\n");
+            if (childId.unid == root.unid) {
+                ++childId.unid;
+            }
+            xml.append("<ID>").append(childId.unid).append("</ID>\n");
         }
         xml.append("</CHILDREN>\n");
         xml.append("</ROOT>\n");
