@@ -1,10 +1,11 @@
 main
-num V_a, num V_b, num V_c, num V_result1, num V_result2
+num V_a, num V_b, num V_c, num V_result1, num V_result2,
 begin
     V_a = 10;
     V_b = 5;
-    V_c = 3;
-    F_localfunc(V_a,V_b,V_c);
+    V_c = F_localfunc(V_a,V_b,V_c);
+    
+    
    
 end
 
@@ -28,4 +29,45 @@ void F_localfunc(V_a, V_b, V_c)
        return V_innerresult;
     end
 }
+
+void F_other(V_a, V_b)
+{
+    num V_innerresult
+
+    begin
+        V_innerresult = 0;
+        if grt(V_innerresult, V_c) then
+            begin
+                print "Inner";
+            end
+        else
+            begin
+                print "Equal";
+            end
+        ;
+       return V_innerresult;
+    end
+}
+
+void F_another(V_a, V_b)
+{
+    num V_innerresult
+
+    begin
+        V_innerresult = 0;
+        if grt(V_innerresult, V_c) then
+            begin
+                print "Inner";
+            end
+        else
+            begin
+                print "Equal";
+            end
+        ;
+       return V_innerresult;
+    end
+}
 end
+end
+end
+
