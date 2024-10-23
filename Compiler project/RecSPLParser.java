@@ -72,14 +72,14 @@ public class RecSPLParser {
         // this.symbolTableStack = new Stack<>();
         this.symbolTable = new SymbolTable();
         this.functionTable = parser.functionTable;
-        System.out.println("Function table size: " + functionTable.size());
+      //  System.out.println("Function table size: " + functionTable.size());
         functionTable.forEach((key, value) -> {
-            System.out.println(key + " : " + value);
-            System.out.println(value.getParamTypes());
+            // System.out.println(key + " : " + value);
+            // System.out.println(value.getParamTypes());
         });
         parser.functionTable.forEach((key, value) -> {
-            System.out.println(key + " : " + value);
-            System.out.println(value.getParamTypes());
+            // System.out.println(key + " : " + value);
+            // System.out.println(value.getParamTypes());
         });
         // Push the global scope onto the stack
         // this.symbolTableStack.push(new HashMap<>());
@@ -112,7 +112,7 @@ public class RecSPLParser {
         // parentNode.addChild(childNode);
         // consume();
         // Create a new leaf node for this token
-        System.out.println("Creating leaf node for token: " + token.type.toString());
+        // System.out.println("Creating leaf node for token: " + token.type.toString());
         LeafNode leafNode = new LeafNode(parentNode.getUnid(), getNextNodeId(), token.data, token.type.toString());
 
         // Add the leaf node to the tree
@@ -134,13 +134,13 @@ public class RecSPLParser {
         parseGlobVars(programNode);          // match global variables
         parseAlgo(programNode);              // match algorithm block
         if (functionTable.isEmpty()) {
-            System.out.println("Function table is empty");
+            //System.out.println("Function table is empty");
         } else {
             functionTable = new HashMap<>();
 
         }
         parseFunctions(programNode);         // match functions
-        System.out.println("End of program");
+        //   System.out.println("End of program");
     }
 
     // <GLOBVARS> ::= VTYP VNAME , GLOBVARS | // nullable
@@ -164,8 +164,8 @@ public class RecSPLParser {
             if (globalScope.containsKey(varToken.data)) {
                 throw new Exception("Variable " + varToken.data + " already declared globally.");
             } else {
-                System.out.println("Adding variable " + varToken.data + " to global scope");
-                System.out.println("Variable type: " + varType);
+                // System.out.println("Adding variable " + varToken.data + " to global scope");
+                // System.out.println("Variable type: " + varType);
                 globalScope.put(varToken.data, new SymbolInfo(varType, null, varToken.data));
             }
             Token commaToken = getCurrentToken();
@@ -177,13 +177,13 @@ public class RecSPLParser {
                 parseGlobVars(globVarsNode); // recursively parse more global vars
             }
         } else {
-            System.out.println("No global variables found");
+          //  System.out.println("No global variables found");
         }
     }
 
     // <ALGO> ::= begin INSTRUC end
     public void parseAlgo(Node parentNode) throws Exception {
-        System.out.println("Parsing algorithm block");
+       // System.out.println("Parsing algorithm block");
         Node algoNode = new Node(nodeIdCounter++, "ALGO", parentNode);
         parentNode.addChild(algoNode);
         Token token = getCurrentToken();
@@ -261,7 +261,7 @@ public class RecSPLParser {
     // Helper methods
     private String parseAtomic(Node parentNode) throws Exception {
         Token token = getCurrentToken();
-        System.out.println(token.data);
+       // System.out.println(token.data);
         if (token.type == TokenType.VNAME) {
             expect(TokenType.VNAME, parentNode); // match variable name
             return getVariableType(token.data).type; // return the type of the variable
@@ -299,8 +299,8 @@ public class RecSPLParser {
                     String assignedType = parseTerm(assignNode);
                     // Check if assigned value matches the declared type
                     String varType = getVariableType(varToken.data).type;
-                    System.out.println("Variable type: " + varType);
-                    System.out.println("Assigned type: " + assignedType);
+                    // System.out.println("Variable type: " + varType);
+                    // System.out.println("Assigned type: " + assignedType);
                     if (!varType.equals(assignedType)) {
                         throw new Exception("Type mismatch: cannot assign " + assignedType + " to " + varType + ".");
                     }
@@ -323,21 +323,21 @@ public class RecSPLParser {
 
         // Check if the function is declared
         if (darkart.equals("notdarkart")) {
-            System.out.println("Not Dark art");
+           // System.out.println("Not Dark art");
 
             if (!functionTable.containsKey(funcToken.data)) {
                 throw new Exception("Function " + funcToken.data + " not declared.");
             }
             if (functionTable == null) {
-                System.out.println("Function table is null");
+               // System.out.println("Function table is null");
             }
             FunctionSignature signature = functionTable.get(funcToken.data);
             expect(TokenType.LPAREN, callNode);
             List<String> argumentTypes = parseArguments(callNode, signature.getParamTypes()); // Match arguments
             expect(TokenType.RPAREN, callNode);
 
-            System.out.println(argumentTypes.size());
-            System.out.println(signature.getParamTypes().size());
+            // System.out.println(argumentTypes.size());
+            // System.out.println(signature.getParamTypes().size());
 
             // Check if the number and types of arguments match the function signature
             if (!signature.parameterSizeMatch(argumentTypes)) {
@@ -349,10 +349,10 @@ public class RecSPLParser {
 
             for (int i = 0; i < functionTable.size(); i++) {
                 if (signature == functionTable.get(funcToken.data)) {
-                    System.out.println("Function signature matches");
+                  //  System.out.println("Function signature matches");
                     functionTable.remove(funcToken.data);
                 } else {
-                    System.out.println("Function signature does not match");
+                   throw new Exception("Function signature does not match");
                 }
             }
 
@@ -400,8 +400,8 @@ public class RecSPLParser {
     private SymbolInfo getVariableType(String varName) {
         for (Map<String, SymbolInfo> scope : symbolTable.symbolTableStack) {
             if (scope.containsKey(varName)) {
-                System.out.println("Variable " + varName + " found in scope");
-                System.out.println("Variable type: " + scope.get(varName));
+                // System.out.println("Variable " + varName + " found in scope");
+                // System.out.println("Variable type: " + scope.get(varName));
                 return scope.get(varName);
             }
         }
@@ -638,7 +638,7 @@ public class RecSPLParser {
             parseDecl(functionsNode); // Parse a single function declaration
             parseFunctions(functionsNode); // Recursively parse more functions (if any)
         } else if (token == null) {
-            System.out.println("End of input");
+            // System.out.println("End of input");
         } else if (token.type != TokenType.NUM && token.type != TokenType.VOID) {
             throw new Exception("Expected function type but found " + token);
         }
@@ -671,8 +671,8 @@ public class RecSPLParser {
 
         // Add function signature to the function table
         for (int i = 0; i < functionTable.size(); i++) {
-            System.out.println(funcToken.data);
-            System.out.println(functionTable.get(funcToken.data));
+            // System.out.println(funcToken.data);
+            // System.out.println(functionTable.get(funcToken.data));
         }
         if (searchForFunctionName(funcToken.data)) {
             throw new Exception("Function " + functionName + " is already declared.");
@@ -684,7 +684,7 @@ public class RecSPLParser {
     private boolean searchForFunctionName(String functionName) {
         for (int i = 0; i < functionTable.size(); i++) {
             if (functionTable.get(functionName) != null) {
-                System.out.println(functionTable);
+               // System.out.println(functionTable);
                 return true;
             }
         }
@@ -721,10 +721,10 @@ public class RecSPLParser {
         parseLocVars(bodyNode); // Parse local variables
         parseAlgo(bodyNode); // Parse algorithm block
         expect(TokenType.EPILOG, bodyNode); // Parse 'EPILOG'
-        System.out.println("Read the epilog");
+        // System.out.println("Read the epilog");
         parseFunctions(bodyNode); // Parse functions
         expect(TokenType.END, bodyNode); // Parse 'end'
-        System.out.println("Read the end");
+        //System.out.println("Read the end");
     }
 
 // <LOCVARS> ::= VTYP VNAME , VTYP VNAME , VTYP VNAME ,
@@ -836,40 +836,43 @@ public class RecSPLParser {
 
             // Step 2: Lexing process - generate tokens
             List<Token> tokens = RecSPLLexer.lex(input);
-            for (int i = 0; i < tokens.size(); i++) {
-                System.out.println(tokens.get(i));
-            }
-
+            // for (int i = 0; i < tokens.size(); i++) {
+            //     System.out.println(tokens.get(i));
+            // }
+            System.out.println("Lexing completed successfully. No errors found.");
             // Step 3: Parsing process        
             Node rootNode = new Node(0, "ROOT", null);
             RecSPLParser parser = new RecSPLParser(tokens, rootNode); // Pass tokens to the parser
 
             parser.parseProgram(); // Start parsing the 
-
-            parser.functionTable.forEach((key, value) -> {
-                System.out.println(key + " : " + value);
-                System.out.println(value.getParamTypes());
-            });
+            System.out.println("Parsing completed successfully. No syntax errors found.");
+            // parser.functionTable.forEach((key, value) -> {
+            //     System.out.println(key + " : " + value);
+            //     System.out.println(value.getParamTypes());
+            // });
             // Step 4: Semantic Analysis of functions
             Node functionNode = new Node(0, "ROOT", null);
             RecSPLParser parserFunction = new RecSPLParser(parser, functionNode);
             parserFunction.darkart = "notdarkart";
             parserFunction.parseProgram();
-            parserFunction.functionTable.forEach((key, value) -> {
-                System.out.println(key + " : " + value);
-                System.out.println(value.getParamTypes());
-            });
+            // parserFunction.functionTable.forEach((key, value) -> {
+            //     System.out.println(key + " : " + value);
+            //     System.out.println(value.getParamTypes());
+            // });
+            System.out.println("Semantic Analysis completed successfully. No syntax errors found.");
             // Output the syntax tree
             RecSPLLexer.writeTokensToXML(tokens, xmlOutputFile);
             parser.syntaxTree.toXML(xmlOutputFileSyntaxTree);
             // System.out.println(syntaxTreeXML);
-
+            System.out.println("Syntax tree output to " + xmlOutputFileSyntaxTree);
             // Step 5: Typechecking
             // Step 6: Code Generation
             CodeGenerator codeGenerator = new CodeGenerator(tokens, parserFunction.symbolTable, parserFunction.functionTable);
             String code = codeGenerator.translate();
-            System.out.println(code);
-            System.out.println("Parsing completed successfully. No syntax errors found.");
+            codeGenerator.writeFormattedCodeToFile(code);
+            ConvertToBasic converter = new ConvertToBasic();
+            converter.convertToBasic("output.txt", "basic_output.bas");
+
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
         }

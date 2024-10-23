@@ -1,6 +1,8 @@
 
 import java.util.List;
 import java.util.Map;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public class CodeGenerator {
 
@@ -465,5 +467,39 @@ public class CodeGenerator {
 
     private boolean isOperator(TokenType type) {
         return type == TokenType.BINOP || type == TokenType.UNOP;
+    }
+
+    public void writeFormattedCodeToFile(String translatedCode) {
+        // Split the translated code by lines
+        String[] lines = translatedCode.split("\n");
+
+        StringBuilder formattedCode = new StringBuilder();
+        int indentLevel = 0;
+        String indentString = "    "; // Use 4 spaces for each indent level
+
+        for (String line : lines) {
+            line = line.trim(); // Remove any leading/trailing whitespace
+
+            // Decrease indent level after closing blocks (e.g., ELSE, END, STOP)
+            if (line.startsWith("ELSE") || line.startsWith("END") || line.startsWith("STOP")) {
+                indentLevel = Math.max(0, indentLevel - 1);
+            }
+
+            // Append the formatted line with the current indent level
+            formattedCode.append(indentString.repeat(indentLevel)).append(line).append("\n");
+
+            // Increase indent level after opening blocks (e.g., IF, THEN, BEGIN)
+            if (line.startsWith("IF") || line.startsWith("THEN") || line.startsWith("CALL") || line.startsWith("BEGIN")) {
+                indentLevel++;
+            }
+        }
+
+        // Write the formatted code to a file called output.txt
+        try (FileWriter fileWriter = new FileWriter("output.txt")) {
+            fileWriter.write(formattedCode.toString());
+            System.out.println("Code written to output.txt");
+        } catch (IOException e) {
+            System.err.println("Error writing to output.txt: " + e.getMessage());
+        }
     }
 }

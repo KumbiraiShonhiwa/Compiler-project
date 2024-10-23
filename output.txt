@@ -1,0 +1,11 @@
+V_a := 10
+V_b := 5
+V_result1 := 10+10+5
+PRINT 0
+V_c := CALL_F_localfunc(V_a,V_b,V_c)
+STOP  REM BEGIN V_innerresult := 0
+IF V_innerresult grt V_c THEN PRINT "Inner"
+ELSE PRINT "Equal"
+
+RETURN V_innerresult
+REM END  STOP
