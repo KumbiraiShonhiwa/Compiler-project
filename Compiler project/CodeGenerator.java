@@ -1,16 +1,19 @@
 
 import java.util.List;
+import java.util.Map;
 
 public class CodeGenerator {
 
     private final List<Token> tokens;
     private final SymbolTable symbolTable;
+    private Map<String, FunctionSignature> functionTable;
     private int currentTokenIndex;
 
-    public CodeGenerator(List<Token> tokens, SymbolTable symbolTable) {
+    public CodeGenerator(List<Token> tokens, SymbolTable symbolTable, Map<String, FunctionSignature> functionTable) {
         this.tokens = tokens;
         this.symbolTable = symbolTable;
         this.currentTokenIndex = 0; // Start at the beginning of the token list
+        this.functionTable = functionTable;
     }
 
     public String translate() {
@@ -31,7 +34,7 @@ public class CodeGenerator {
         match(TokenType.MAIN); // Consume 'main'
         translationGLOBVARS();
         String algoCode = translationALGO();
-        String functionsCode = translationFUNCTIONS();
+        String functionsCode = translateFUNCTIONS();
         return algoCode + " STOP " + functionsCode; // Append STOP after ALGO
     }
 
@@ -170,7 +173,9 @@ public class CodeGenerator {
 
     private String translationCALL() {
         // Handle function calls
-        String functionName = symbolTable.getType(tokens.get(currentTokenIndex++).data); // Retrieve new name
+        Token funcToken = getCurrentToken();
+        FunctionSignature signature = functionTable.get(funcToken.data);// Retrieve new name
+        match(TokenType.FNAME); // Consume function name
         match(TokenType.LPAREN); // Consume '('
         String p1 = translateATOMIC();
         match(TokenType.COMMA);
@@ -178,7 +183,7 @@ public class CodeGenerator {
         match(TokenType.COMMA);
         String p3 = translateATOMIC();
         match(TokenType.RPAREN); // Consume ')'
-        return "CALL_" + functionName + "(" + p1 + "," + p2 + "," + p3 + ")";
+        return "CALL_" + signature.getFunctionName() + "(" + p1 + "," + p2 + "," + p3 + ")";
     }
 
     private String translateATOMIC() {
@@ -309,20 +314,64 @@ public class CodeGenerator {
     private String translationCOND() {
         // Handle conditions (SIMPLE or COMPOSIT)
         // Placeholder: Assuming conditions are always SIMPLE for now
-        return translationSIMPLE();
+        Token currentToken = getCurrentToken();
+        if (currentToken.type == TokenType.BINOP) {
+            match(TokenType.BINOP);
+            match(TokenType.LPAREN);
+            Token atomic1 = getCurrentToken();
+            if (atomic1.type == TokenType.VNAME || atomic1.type == TokenType.CONST || atomic1.type == TokenType.CONST2) {
+                return translationSIMPLE(currentToken.data);
+            } else {
+                return translationCOMPOSIT(currentToken.data);
+            }
+
+        } else if (currentToken.type == TokenType.UNOP) {
+            match(TokenType.UNOP);
+            match(TokenType.LPAREN);
+            Token atomic1 = getCurrentToken();
+            return translationSIMPLE(currentToken.data);
+        } else {
+            throw new RuntimeException("Unexpected condition: " + currentToken);
+        }
+
     }
 
-    private String translationSIMPLE() {
+    private String translationCOMPOSIT(String op) {
+        // Handle composite conditions
+        // For example: translate(BINOP(COND1, COND2))
+        Token currentToken = getCurrentToken();
+        if (currentToken.type == TokenType.BINOP) {
+            String cond1Code = translationSIMPLE(op);
+            match(TokenType.BINOP); // Consume binary operator
+            String cond2Code = translationSIMPLE(op);
+            match(TokenType.RPAREN); // Consume ')'
+            return cond1Code + " " + op + " " + cond2Code;
+        } else {
+            throw new RuntimeException("Unexpected composite condition: " + currentToken);
+        }
+    }
+
+    private String translationSIMPLE(String op) {
         // Handle simple conditions
         // For example: translate(BINOP(ATOMIC1, ATOMIC2))
         String atomic1Code = translateATOMIC();
-        match(TokenType.BINOP); // Consume binary operator
+        match(TokenType.COMMA); // Consume ','
         String atomic2Code = translateATOMIC();
-        return atomic1Code + " " + translateBinop() + " " + atomic2Code;
+        match(TokenType.RPAREN); // Consume ')'
+        return atomic1Code + " " + op + " " + atomic2Code;
     }
 
     public String translateFUNCTIONS() {
-        return " REM END ";
+        Token expected = getCurrentToken();
+        if (expected == null) {
+            return " REM END ";
+        } else {
+            if (expected.type == TokenType.VOID || expected.type == TokenType.NUM) {
+                return translateFUNCTIONS1();
+            } else {
+                return "";
+            }
+        }
     }
 
     public String translateFUNCTIONS1() {
@@ -332,11 +381,29 @@ public class CodeGenerator {
     }
 
     public String translateDECL() {
+        Token expected = getCurrentToken();
+        if (expected.type == TokenType.VOID || expected.type == TokenType.NUM) {
+            translateHEADER();
+
+        } else {
+            return "";
+        }
         return translateBODY();
     }
 
     public void translateHEADER() {
         // HEADER is ignored in the code generation step.
+        Token expected = getCurrentToken();
+        match(expected.type);
+        expected = getCurrentToken();
+        match(TokenType.FNAME);
+        match(TokenType.LPAREN);
+        match(TokenType.VNAME);
+        match(TokenType.COMMA);
+        match(TokenType.VNAME);
+        match(TokenType.COMMA);
+        match(TokenType.VNAME);
+        match(TokenType.RPAREN);
     }
 
     public void translateFTYP() {
@@ -345,10 +412,16 @@ public class CodeGenerator {
 
     public void translateLOCVARS() {
         // LOCVARS are ignored in the code generation step.
+        Token expected = getCurrentToken();
+        System.out.println(expected.type.toString());
+        match(expected.type);
+        match(TokenType.VNAME);
     }
 
     public String translateBODY() {
+
         String pCode = translatePROLOG();
+        translateLOCVARS();
         String aCode = translationALGO();
         String eCode = translateEPILOG();
         String sCode = translateSUBFUNCS();

@@ -166,7 +166,7 @@ public class RecSPLParser {
             } else {
                 System.out.println("Adding variable " + varToken.data + " to global scope");
                 System.out.println("Variable type: " + varType);
-                globalScope.put(varToken.data, new SymbolInfo(varType, null,varToken.data));
+                globalScope.put(varToken.data, new SymbolInfo(varType, null, varToken.data));
             }
             Token commaToken = getCurrentToken();
             if (commaToken == null) {
@@ -744,7 +744,7 @@ public class RecSPLParser {
             if (LocalScope.containsKey(varToken.data)) {
                 throw new Exception("Variable " + varToken.data + " already declared globally.");
             } else {
-                LocalScope.put(varToken.data, new SymbolInfo(varType, null,varToken.data));
+                LocalScope.put(varToken.data, new SymbolInfo(varType, null, varToken.data));
             }
 
             if (getCurrentToken().type == TokenType.COMMA) {
@@ -855,7 +855,10 @@ public class RecSPLParser {
             RecSPLParser parserFunction = new RecSPLParser(parser, functionNode);
             parserFunction.darkart = "notdarkart";
             parserFunction.parseProgram();
-
+            parserFunction.functionTable.forEach((key, value) -> {
+                System.out.println(key + " : " + value);
+                System.out.println(value.getParamTypes());
+            });
             // Output the syntax tree
             RecSPLLexer.writeTokensToXML(tokens, xmlOutputFile);
             parser.syntaxTree.toXML(xmlOutputFileSyntaxTree);
@@ -863,7 +866,7 @@ public class RecSPLParser {
 
             // Step 5: Typechecking
             // Step 6: Code Generation
-            CodeGenerator codeGenerator = new CodeGenerator(tokens, parser.symbolTable);
+            CodeGenerator codeGenerator = new CodeGenerator(tokens, parserFunction.symbolTable, parserFunction.functionTable);
             String code = codeGenerator.translate();
             System.out.println(code);
             System.out.println("Parsing completed successfully. No syntax errors found.");
