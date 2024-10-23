@@ -225,12 +225,10 @@ public class RecSPLTypeCheckerA {
         return typecheckFUNCTIONS(subfuncs.getChild("FUNCTIONS"));
     }
 
-    // Helper method to get the current function's return type (requires tracking)
     private String getCurrentFunctionReturnType() {
         System.out.println("getcurrreturntype  :");
-        // Implement this based on current function tracking
         
-        return currentFunctionReturnType; // Placeholder
+        return currentFunctionReturnType;
     }
 
     // Determine the type of a node
