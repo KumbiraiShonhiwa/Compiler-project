@@ -35,7 +35,14 @@ public class SymbolTable {
         if (symbolTableStack.isEmpty()) {
             throw new RuntimeException("No active scope.");
         }
-        symbolTableStack.peek().put(name, new SymbolInfo(type, value));
+        symbolTableStack.peek().put(name, new SymbolInfo(type, value, name));
+    }
+
+    public void add(String name, String type) {
+        if (symbolTableStack.isEmpty()) {
+            throw new RuntimeException("No active scope.");
+        }
+        symbolTableStack.peek().put(name, new SymbolInfo(type, null, name));
     }
 
     // Get the type of a symbol (variable) from the closest scope
@@ -53,6 +60,15 @@ public class SymbolTable {
         for (int i = symbolTableStack.size() - 1; i >= 0; i--) {
             if (symbolTableStack.get(i).containsKey(name)) {
                 return symbolTableStack.get(i).get(name).value;
+            }
+        }
+        return null; // Return null if symbol is not found
+    }
+
+    public String getVariableName(String name) {
+        for (int i = symbolTableStack.size() - 1; i >= 0; i--) {
+            if (symbolTableStack.get(i).containsKey(name)) {
+                return symbolTableStack.get(i).get(name).internalName;
             }
         }
         return null; // Return null if symbol is not found
@@ -90,5 +106,15 @@ public class SymbolTable {
         } else {
             System.out.println("No active scope.");
         }
+    }
+    // Add this method to your SymbolTable class
+
+    public void link(String type, String name) {
+        // Ensure we're not overwriting an existing symbol in the current scope
+        if (symbolTableStack.peek().containsKey(name)) {
+            throw new RuntimeException("Symbol " + name + " is already defined in the current scope.");
+        }
+        // Add the symbol with a type but no initial value (value is set to null)
+        addSymbol(name, type, null);
     }
 }

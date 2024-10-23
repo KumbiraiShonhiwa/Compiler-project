@@ -10,7 +10,7 @@ public class TypeCheckerTest {
             SymbolTable symbolTable = new SymbolTable();
 
             // type-checking
-            TypeChecker typeChecker = new TypeChecker(symbolTable);
+            RecSPLTypeChecker typeChecker = new RecSPLTypeChecker(symbolTable);
             boolean isTypeCorrect = typeChecker.typecheck(rootNode);
 
             // displays tyoe checking results

@@ -62,7 +62,7 @@ public class RecSPLParser {
         this.functionTable = new HashMap<>();
 
         // Push the global scope onto the stack
-       // this.symbolTableStack.push(new HashMap<>());
+        // this.symbolTableStack.push(new HashMap<>());
     }
 
     public RecSPLParser(RecSPLParser parser, Node node) {
@@ -74,6 +74,10 @@ public class RecSPLParser {
         this.functionTable = parser.functionTable;
         System.out.println("Function table size: " + functionTable.size());
         functionTable.forEach((key, value) -> {
+            System.out.println(key + " : " + value);
+            System.out.println(value.getParamTypes());
+        });
+        parser.functionTable.forEach((key, value) -> {
             System.out.println(key + " : " + value);
             System.out.println(value.getParamTypes());
         });
@@ -162,7 +166,7 @@ public class RecSPLParser {
             } else {
                 System.out.println("Adding variable " + varToken.data + " to global scope");
                 System.out.println("Variable type: " + varType);
-                globalScope.put(varToken.data, new SymbolInfo(varType, null));
+                globalScope.put(varToken.data, new SymbolInfo(varType, null,varToken.data));
             }
             Token commaToken = getCurrentToken();
             if (commaToken == null) {
@@ -257,14 +261,18 @@ public class RecSPLParser {
     // Helper methods
     private String parseAtomic(Node parentNode) throws Exception {
         Token token = getCurrentToken();
+        System.out.println(token.data);
         if (token.type == TokenType.VNAME) {
             expect(TokenType.VNAME, parentNode); // match variable name
             return getVariableType(token.data).type; // return the type of the variable
         } else if (token.type == TokenType.CONST) {
             expect(TokenType.CONST, parentNode); // match constant
             return getAssignedType(token.data); // Constants are treated as "text"
+        } else if (token.type == TokenType.CONST2) {
+            expect(TokenType.CONST2, parentNode); // match constant number
+            return getAssignedType(token.data);
         } else {
-            throw new Exception("Expected atomic value but found " + token.type);
+            throw new Exception("Syntax Error " + token.type);
         }
     }
 
@@ -288,14 +296,14 @@ public class RecSPLParser {
             switch (token.type) {
                 case EQUALS -> {
                     consume(); // match '='
-                    parseTerm(assignNode);
+                    String assignedType = parseTerm(assignNode);
                     // Check if assigned value matches the declared type
-                    // String varType = getVariableType(varToken.data).type;
-                    // System.out.println("Variable type: " + varType);
-                    // System.out.println("Assigned type: " + assignedType);
-                    // if (!varType.equals(assignedType)) {
-                    //     throw new Exception("Type mismatch: cannot assign " + assignedType + " to " + varType + ".");
-                    // }
+                    String varType = getVariableType(varToken.data).type;
+                    System.out.println("Variable type: " + varType);
+                    System.out.println("Assigned type: " + assignedType);
+                    if (!varType.equals(assignedType)) {
+                        throw new Exception("Type mismatch: cannot assign " + assignedType + " to " + varType + ".");
+                    }
                 }
                 case INPUT ->
                     consume(); // match '< input'
@@ -305,11 +313,11 @@ public class RecSPLParser {
         }
     }
 
-    private void parseCall(Node parentNode) throws Exception {
+    private String parseCall(Node parentNode) throws Exception {
         Node callNode = new Node(nodeIdCounter++, "CALL", parentNode);
         syntaxTree.addInnerNode(callNode);
         parentNode.addChild(callNode);
-
+        String type = "num";
         Token funcToken = getCurrentToken();
         expect(TokenType.FNAME, callNode);
 
@@ -332,8 +340,11 @@ public class RecSPLParser {
             System.out.println(signature.getParamTypes().size());
 
             // Check if the number and types of arguments match the function signature
-            if (signature.matchesArgumentTypes(argumentTypes)) {
+            if (!signature.parameterSizeMatch(argumentTypes)) {
                 throw new Exception("Function " + funcToken.data + " called with incorrect number of arguments.");
+            }
+            if (!signature.parameterTypeCheck(argumentTypes)) {
+                throw new Exception("Function " + funcToken.data + " called with incorrect argument types. (Type mismatch)");
             }
 
             for (int i = 0; i < functionTable.size(); i++) {
@@ -352,9 +363,10 @@ public class RecSPLParser {
             expect(TokenType.COMMA, callNode);
             parseAtomic(callNode);
             expect(TokenType.COMMA, callNode);
-            parseAtomic(callNode);
+            type = parseAtomic(callNode);
             expect(TokenType.RPAREN, callNode);
         }
+        return type;
     }
 
     private List<String> parseArguments(Node parentNode, List<String> expectedTypes) throws Exception {
@@ -407,7 +419,7 @@ public class RecSPLParser {
     // Helper function to infer the type of an expression
     private String inferExpressionType() {
         // Example implementation, returning "num" or "text" based on the expression
-        return "text"; // placeholder
+        return "num"; // placeholder
     }
 
     private void parseBranch(Node parentNode) throws Exception {
@@ -498,27 +510,28 @@ public class RecSPLParser {
         syntaxTree.addInnerNode(termNode);
         parentNode.addChild(termNode);
         Token token = getCurrentToken();
+        String type = "";
         if (null != token.type) {
             switch (token.type) {
                 case FNAME ->
-                    parseCall(termNode);
-                case VNAME, CONST ->
-                    parseAtomic(termNode);
+                    type = parseCall(termNode);
+                case VNAME, CONST, CONST2 ->
+                    type = parseAtomic(termNode);
                 case UNOP, BINOP ->
-                    parseOp(termNode);
+                    type = parseOp(termNode);
                 default ->
                     throw new Exception("Expected term but found " + token);
             }
         } else {
             throw new Exception("Expected term but found " + token);
         }
-        return inferExpressionType();
+        return type;
     }
 
     // Parsing OP (either Unary or Binary Operation)
-    private void parseOp(Node parentNode) throws Exception {
+    private String parseOp(Node parentNode) throws Exception {
         Token currentToken = getCurrentToken();
-
+        String type = expectedType(currentToken);
         if (null == currentToken.type) {
             throw new Exception("Expected UNOP or BINOP, but found: " + currentToken.type);
         } else // Determine whether it's a unary or binary operation based on the next token
@@ -532,27 +545,51 @@ public class RecSPLParser {
                     throw new Exception("Expected UNOP or BINOP, but found: " + currentToken.type);
             }
         }
+        return type;
     }
 
 // Parsing Unary Operation
-    private void parseUnaryOp(Node parentNode) throws Exception {
+    private String parseUnaryOp(Node parentNode) throws Exception {
         Node unopNode = new Node(nodeIdCounter++, "UNOP");
         syntaxTree.addInnerNode(unopNode);
         parentNode.addChild(unopNode);
-
+        Token token = getCurrentToken();
+        String type = expectedType(token);
         expect(TokenType.UNOP, unopNode); // Expect UNOP
         expect(TokenType.LPAREN, unopNode); // Expect '('
 
         parseArg(unopNode); // Parse the argument of the unary operation
 
         expect(TokenType.RPAREN, unopNode); // Expect ')'
+        return type;
+    }
+
+    private String expectedType(Token token) {
+        switch (token.data) {
+            case "not":
+            case "and":
+            case "or":
+                return "bool";
+            case "eq":
+            case "sqrt":
+            case "grt": // greater than >
+            case "add":
+            case "sub":
+            case "mul":
+            case "div":
+                return "num";
+            default:
+                throw new AssertionError("Unexpected token: " + token.data);
+        }
     }
 
 // Parsing Binary Operation
-    private void parseBinaryOp(Node parentNode) throws Exception {
+    private String parseBinaryOp(Node parentNode) throws Exception {
         Node binopNode = new Node(nodeIdCounter++, "BINOP");
         syntaxTree.addInnerNode(binopNode);
         parentNode.addChild(binopNode);
+        Token token = getCurrentToken();
+        String type = expectedType(token);
 
         expect(TokenType.BINOP, binopNode); // Expect BINOP
         expect(TokenType.LPAREN, binopNode); // Expect '('
@@ -562,6 +599,7 @@ public class RecSPLParser {
         parseArg(binopNode); // Parse the second argument
 
         expect(TokenType.RPAREN, binopNode); // Expect ')'
+        return type;
     }
 
 // Parsing Argument (either ATOMIC or OP)
@@ -574,7 +612,7 @@ public class RecSPLParser {
             syntaxTree.addInnerNode(argNode);
             parentNode.addChild(argNode);
             switch (currentToken.type) {
-                case VNAME, CONST -> // If it's an atomic value (identifier or number)
+                case VNAME, CONST, CONST2 -> // If it's an atomic value (identifier or number)
                     parseAtomic(parentNode);
                 case UNOP, BINOP -> // If it's an operation (recursive parsing of OP)
                     parseOp(parentNode);
@@ -661,8 +699,8 @@ public class RecSPLParser {
             syntaxTree.addInnerNode(paramsNode);
             parentNode.addChild(paramsNode);
 
-            // String paramType = parseVType(paramsNode); // Parse parameter type
-            // parameterTypes.add(paramType);
+            String paramType = "num"; // Parse parameter type
+            parameterTypes.add(paramType);
             expect(TokenType.VNAME, paramsNode); // Parse parameter name
 
             if (getCurrentToken().type == TokenType.COMMA) {
@@ -706,7 +744,7 @@ public class RecSPLParser {
             if (LocalScope.containsKey(varToken.data)) {
                 throw new Exception("Variable " + varToken.data + " already declared globally.");
             } else {
-                LocalScope.put(varToken.data, new SymbolInfo(varType, null));
+                LocalScope.put(varToken.data, new SymbolInfo(varType, null,varToken.data));
             }
 
             if (getCurrentToken().type == TokenType.COMMA) {
@@ -824,6 +862,10 @@ public class RecSPLParser {
             // System.out.println(syntaxTreeXML);
 
             // Step 5: Typechecking
+            // Step 6: Code Generation
+            CodeGenerator codeGenerator = new CodeGenerator(tokens, parser.symbolTable);
+            String code = codeGenerator.translate();
+            System.out.println(code);
             System.out.println("Parsing completed successfully. No syntax errors found.");
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());

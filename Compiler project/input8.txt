@@ -3,6 +3,8 @@ num V_a, num V_b, num V_c, num V_result1, num V_result2,
 begin
     V_a = 10;
     V_b = 5;
+    V_result1 = add(add(10,10),5);
+    print "V0";
     V_c = F_localfunc(V_a,V_b,V_c);
     
     

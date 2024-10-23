@@ -9,6 +9,17 @@ public class Token {
         this.id = id;
     }
 
+    public boolean isType(TokenType type) {
+        return this.type == type;
+    }
+    public String getName() {
+        return data;
+    }
+
+    public TokenType getType() {
+        return type;
+    }
+
     @Override
     public String toString() {
         return String.format("(%d: %s, \"%s\")", id, type.name(), data);

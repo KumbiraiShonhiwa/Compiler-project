@@ -1,4 +1,5 @@
 public class TypeChecker {
+
     private SymbolTable symbolTable;
 
     public TypeChecker(SymbolTable symbolTable) {
@@ -22,28 +23,36 @@ public class TypeChecker {
             System.err.println("Encountered a null node during type checking.");
             return false;
         }
-        
-        System.out.println("Type-checking node: " + node.getSymbol());
 
-        switch (node.getSymbol()) {
-            case "PROG":
+        System.out.println("Type-checking node: " + node.getSymbol());
+        Node next = node.getChildren().get(0);
+        System.out.println("Next node: " + next.getSymbol());
+        switch (next.getSymbol()) {
+            case "PROG" -> {
                 return typecheckPROG(node);
-            case "ALGO":
+            }
+            case "ALGO" -> {
                 return typecheckALGO(node);
-            case "INSTRUC":
+            }
+            case "INSTRUC" -> {
                 return typecheckINSTRUC(node);
-            case "COMMAND":
+            }
+            case "COMMAND" -> {
                 return typecheckCOMMAND(node);
-            case "ASSIGN":
+            }
+            case "ASSIGN" -> {
                 return typecheckASSIGN(node);
-            case "print":
+            }
+            case "print" -> {
                 return typecheckPrint(node);
-            case "begin":
-            case "end":
+            }
+            case "begin", "end" -> {
                 return true; // No specific type check needed for 'begin' and 'end'
-            default:
+            }
+            default -> {
                 System.err.println("No type-checking rules for symbol: " + node.getSymbol());
                 return false;
+            }
         }
     }
 
@@ -84,62 +93,71 @@ public class TypeChecker {
 
     private boolean typecheckASSIGN(Node node) {
         System.out.println("Type-checking ASSIGN node...");
-        Node varNode = node.getChildren().get(0);
-        Node termNode = node.getChildren().get(1);
-        
-        char varType = typeof(varNode);
-        char termType = typeof(termNode);
-        
+        Node varNode = node.getChildren().get(0); // The variable being assigned to
+        Node termNode = node.getChildren().get(1); // The value being assigned
+
+        // Ensure the variable exists in the symbol table and determine its type
+        String varType = typeof(varNode);
+        String termType = typeof(termNode);
+
         System.out.println("Variable Type: " + varType + ", Term Type: " + termType);
-        
-        if (varType == 'u' || termType == 'u') {
+
+        if ("u".equals(varType) || "u".equals(termType)) {
             System.err.println("Undefined variable or term in assignment.");
             return false;
         }
-        
-        if (varType != termType) {
+
+        // Ensure that the types match before assigning
+        if (!varType.equals(termType)) {
             System.err.println("Type mismatch in assignment: " + varType + " vs " + termType);
             return false;
         }
 
+        // Update the symbol table with the new variable and its type (if applicable)
+        //symbolTable.insert(varNode.getSymbol(), varType);
         return true;
     }
 
     private boolean typecheckPrint(Node node) {
         System.out.println("Type-checking print node...");
-        char type = typeof(node.getChildren().get(0)); // Assuming the first child is the term to print
+        String type = typeof(node.getChildren().get(0)); // Assuming the first child is the term to print
         System.out.println("Print Type: " + type);
-        return type == 'n' || type == 't';
+        return "n".equals(type) || "t".equals(type);
     }
 
     // Auxiliary typeof function
-    private char typeof(Node node) {
+    private String typeof(Node node) {
         if (node == null) {
             System.err.println("Encountered a null node while determining type.");
-            return 'u'; // undefined type
+            return "u"; // undefined type
         }
 
         String symbol = node.getSymbol();
-        if (symbolTable.contains(symbol)) {
+
+        // Check if the symbol is a variable in the symbol table
+        if (symbolTable.containsSymbol(symbol)) {
             return symbolTable.getType(symbol);
         }
 
+        // Determine type based on the node's symbol
         switch (symbol) {
             case "num":
-                return 'n';
+                return "n"; // number type
             case "text":
-                return 't';
+                return "t"; // text type
             case "void":
-                return 'v';
+                return "v"; // void type
             case "VNAME":
-                return symbolTable.getType(node.getChildren().get(0).getSymbol());
+                // Get the type of the variable name from the symbol table
+                String varName = node.getChildren().get(0).getSymbol();
+                return symbolTable.getType(varName);
             case "CONST":
-                return symbol.matches("\\d+") ? 'n' : 't';
+                return symbol.matches("\\d+") ? "n" : "t"; // Numeric or text constant
             case "TERM":
-                return typeof(node.getChildren().get(0)); // A
+                return typeof(node.getChildren().get(0)); // Recursively check the term's type
             default:
                 System.err.println("Undefined type for symbol: " + symbol);
-                return 'u'; // undefined type
+                return "u"; // undefined type
         }
     }
 }

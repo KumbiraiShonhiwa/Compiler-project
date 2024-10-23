@@ -1,3 +1,5 @@
+
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,6 +33,18 @@ public class Node {
         this.parent = parent;
     }
 
+    public String getSymbol() {
+        return symbol;
+    }
+
+    public List<Node> getChildren() {
+        return children;
+    }
+
+    public Node getChild(int i) {
+        return children.get(i);
+    }
+
     public String toXML() {
         StringBuilder xml = new StringBuilder();
         xml.append("<IN>\n");
@@ -47,5 +61,9 @@ public class Node {
         }
         return xml.toString();
 
+    }
+
+    public int getUnid() {
+        return unid;
     }
 }

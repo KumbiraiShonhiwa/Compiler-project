@@ -1,462 +1,485 @@
 
-import java.util.*;
+import java.util.List;
 
 public class RecSPLTypeChecker {
 
-    private final List<Token> tokens;
-    private int currentTokenIndex = 0;
-    private final Map<String, String> symbolTable = new HashMap<>();  // Keeps track of variable types
-    private final Map<String, FunctionSignature> functionTable = new HashMap<>();  // Function signatures
+    private final SymbolTable symbolTable;
 
-    public RecSPLTypeChecker(List<Token> tokens) {
-        this.tokens = tokens;
+    public RecSPLTypeChecker(SymbolTable symbolTable) {
+        this.symbolTable = symbolTable;
     }
 
-    // Helper method to get the current token
-    private Token currentToken() {
-        return tokens.get(currentTokenIndex);
+    public boolean typecheck(Node root) {
+        return typecheckNode(root);
     }
 
-    // Helper method to advance to the next token
-    private void advance() {
-        if (currentTokenIndex < tokens.size() - 1) {
-            currentTokenIndex++;
-        }
-    }
-
-    // Helper method to check if the token matches a specific type
-    private boolean match(TokenType expectedType) {
-        if (currentToken().type == expectedType) {
-            advance();
-            return true;
+    private boolean typecheckNode(Node node) {
+        System.out.println("Type-checking node: " + node.getSymbol());
+        if ("ROOT".equals(node.getSymbol())) {
+            Node nextNode = node.getChildren().get(0);
+            switch (nextNode.getSymbol()) {
+                case "main":
+                    return typecheckPROG(node);
+                case "GLOBVARS":
+                    return typecheckGLOBVARS(node);
+                case "ALGO":
+                    return typecheckALGO(node);
+                case "FUNCTIONS":
+                    return typecheckFUNCTIONS(node);
+                case "COMMAND":
+                    return typecheckCOMMAND(node);
+                // Add cases for other symbols as necessary
+                default:
+                    return false; // Unrecognized symbol
+            }
+        } else {
         }
         return false;
     }
 
-    // Main method to start the type checking
-    public boolean typeCheck() {
-        return checkProg();
-    }
-
-    // PROG ::= main GLOBVARS ALGO FUNCTIONS
-    private boolean checkProg() {
-        if (match(TokenType.MAIN)) {
-            if (checkGlobVars() && checkAlgo() && checkFunctions()) {
-                return true;
-            }
+    private String typeof(Node node) {
+        switch (node.getSymbol()) {
+            case "VNAME":
+                return symbolTable.getType(node.getSymbol()); // Consult symbol table for variable type
+            case "CONST":
+                return getConstType(node);
+            case "VTYP":
+                return typeofVtyp(node);
+            case "ATOMIC":
+                return typeofAtomic(node);
+            case "TERM":
+                return typeofTerm(node);
+            case "CALL":
+                return typeofCall(node);
+            case "OP":
+                return typeofOp(node);
+            // Add more cases as needed
+            default:
+                return null; // Undefined type
         }
-        return false;
     }
 
-    // GLOBVARS ::= VTYP VNAME , GLOBVARS2 | ε
-    private boolean checkGlobVars() {
-        while (match(TokenType.NUM) || match(TokenType.TEXT)) {
-            Token vname = currentToken();
-            if (vname.type == TokenType.VNAME) {
-                symbolTable.put(vname.data, currentToken().type.name()); // Add to symbol table
-                advance();
-                if (!match(TokenType.COMMA)) {
-                    break;
-                }
-            } else {
-                return false;  // Invalid variable name
-            }
+    private String getConstType(Node constNode) {
+        if (isNumericConstant(constNode)) {
+            return "n"; // Numeric type
+        } else if (isTextConstant(constNode)) {
+            return "t"; // Text type
         }
-        return true;  // No global variables is valid too
+        return null; // Undefined constant type
     }
 
-    // ALGO ::= begin INSTRUC end
-    private boolean checkAlgo() {
-        if (match(TokenType.BEGIN)) {
-            if (checkInstruc()) {
-                return match(TokenType.END);
-            }
+    private boolean isNumericConstant(Node constNode) {
+        return constNode.getSymbol().matches("\\d+"); // Simple regex for digits
+    }
+
+    private boolean isTextConstant(Node constNode) {
+        return constNode.getSymbol().startsWith("\"") && constNode.getSymbol().endsWith("\"");
+    }
+
+    private String typeofVtyp(Node vtypNode) {
+        switch (vtypNode.getSymbol()) {
+            case "num":
+                return "n"; // Numeric type
+            case "text":
+                return "t"; // Text type
+            default:
+                return null; // Undefined
         }
-        return false;
     }
 
-    // INSTRUC ::= COMMAND ; INSTRUC2 | ε
-    private boolean checkInstruc() {
-        while (checkCommand()) {
-            if (!match(TokenType.SEMICOLON)) {
-                return false;  // Every command must end with a semicolon
-            }
+    private String typeofAtomic(Node atomicNode) {
+        if (atomicNode.getChildren().isEmpty()) {
+            return null; // No children means it's an invalid atomic
+        }
+
+        Node firstChild = atomicNode.getChildren().get(0);
+        switch (firstChild.getSymbol()) {
+            case "VNAME":
+                return typeof(firstChild); // Get type from symbol table
+            case "CONST":
+                return typeof(firstChild); // Get constant type
+            default:
+                return null; // Undefined atomic
+        }
+    }
+
+    private String typeofTerm(Node termNode) {
+        if (termNode.getChildren().isEmpty()) {
+            return null; // No children means it's an invalid term
+        }
+
+        Node firstChild = termNode.getChildren().get(0);
+        switch (firstChild.getSymbol()) {
+            case "ATOMIC":
+                return typeofAtomic(firstChild); // Type from atomic
+            case "CALL":
+                return typeofCall(firstChild); // Type from call
+            case "OP":
+                return typeofOp(firstChild); // Type from operation
+            default:
+                return null; // Undefined term
+        }
+    }
+
+    private boolean typecheckPROG(Node progNode) {
+        // Assume GLOBVARS is the first child and FUNCTIONS is the second child
+        Node globvarsNode = progNode.getChildren().get(0);
+        Node functionsNode = progNode.getChildren().get(1);
+
+        return typecheckGLOBVARS(globvarsNode) && typecheckFUNCTIONS(functionsNode);
+    }
+
+    private boolean typecheckGLOBVARS(Node globvarsNode) {
+        for (Node globvar : globvarsNode.getChildren()) {
+            String vtType = typeof(globvar.getChildren().get(0)); // VTYPE
+            String vName = globvar.getChildren().get(1).getSymbol(); // VNAME
+            symbolTable.link(vtType, vName);
         }
         return true;
     }
 
-    // COMMAND ::= skip | halt | print ATOMIC | return ATOMIC | ASSIGN | CALL | BRANCH
-    private boolean checkCommand() {
-        if (match(TokenType.SKIP) || match(TokenType.HALT)) {
-            return true;  // Skip and halt are valid commands
-        } else if (match(TokenType.PRINT)) {
-            return checkAtomic();
-        } else if (match(TokenType.RETURN)) {
-            return checkAtomic();
-        } else if (checkAssign()) {
-            return true;
-        } else if (checkCall()) {
-            return true;
-        } else if (checkBranch()) {
-            return true;
-        }
-        return false;
+    private boolean typecheckALGO(Node algoNode) {
+        return typecheckINSTRUC(algoNode); // Assuming algoNode is directly the INSTRUC
     }
 
-    // ASSIGN ::= VNAME < input | VNAME = TERM
-    private boolean checkAssign() {
-        Token vname = currentToken();
-        if (vname.type == TokenType.VNAME) {
-            advance();
-            if (match(TokenType.LESS)) {
-                return match(TokenType.INPUT);  // Only num types can take input
-            } else if (match(TokenType.EQUALS)) {
-                return checkTerm();  // Ensure the term type matches variable type
-            }
-        }
-        return false;
-    }
-
-    // TERM ::= ATOMIC | CALL | OP
-    private boolean checkTerm() {
-        return checkAtomic() || checkCall() || checkOp();
-    }
-
-    // ATOMIC ::= VNAME | CONST
-    private boolean checkAtomic() {
-        Token token = currentToken();
-        if (token.type == TokenType.VNAME) {
-            advance();
-            return true;  // Check symbol table later
-        } else if (token.type == TokenType.CONST) {
-            advance();
-            return true;  // A constant is valid
-        }
-        return false;
-    }
-
-    // CALL ::= FNAME( ATOMIC , ATOMIC , ATOMIC )
-    private boolean checkCall() {
-        Token fname = currentToken();
-        if (fname.type == TokenType.FNAME) {
-            advance();
-            if (match(TokenType.LPAREN)) {
-                if (checkAtomic() && match(TokenType.COMMA) && checkAtomic() && match(TokenType.COMMA) && checkAtomic()) {
-                    return match(TokenType.RPAREN);
-                }
-            }
-        }
-        return false;
-    }
-
-    // OP ::= UNOP( ARG ) | BINOP( ARG1 , ARG2 )
-    private boolean checkOp() {
-        if (checkUnop()) {
-            return true;
-        } else if (checkBinop()) {
-            return true;
-        }
-        return false;
-    }
-
-    // UNOP ::= not | sqrt
-    private boolean checkUnop() {
-        if (match(TokenType.UNOP)) {
-            return match(TokenType.LPAREN) && checkAtomic() && match(TokenType.RPAREN);
-        }
-        return false;
-    }
-
-    // BINOP ::= eq | grt | add | sub | mul | div | or | and
-    private boolean checkBinop() {
-        if (match(TokenType.BINOP)) {
-            return match(TokenType.LPAREN) && checkAtomic() && match(TokenType.COMMA) && checkAtomic() && match(TokenType.RPAREN);
-        }
-        return false;
-    }
-
-    // BRANCH ::= if COND then ALGO1 else ALGO2
-    private boolean checkBranch() {
-        if (match(TokenType.IF)) {
-            if (checkCond()) {
-                return match(TokenType.THEN) && checkAlgo() && match(TokenType.ELSE) && checkAlgo();
-            }
-        }
-        return false;
-    }
-
-    // COND ::= SIMPLE | COMPOSIT
-    private boolean checkCond() {
-        return checkSimple() || checkComposit();
-    }
-
-    // SIMPLE ::= BINOP( ATOMIC , ATOMIC )
-    private boolean checkSimple() {
-        return checkBinop();
-    }
-
-    // COMPOSIT ::= BINOP( SIMPLE , SIMPLE ) | UNOP( SIMPLE )
-    private boolean checkComposit() {
-        if (checkUnop()) {
-            return checkSimple();
-        } else if (checkBinop()) {
-            return checkSimple() && match(TokenType.COMMA) && checkSimple();
-        }
-        return false;
-    }
-
-    // FUNCTIONS ::= DECL | ε
-    private boolean checkFunctions() {
-        while (checkDecl()) {
-            // Keep checking function declarations
-        }
-        return true;  // No functions is valid too
-    }
-
-    // DECL ::= HEADER BODY
-    private boolean checkDecl() {
-        return checkHeader() && checkBody();
-    }
-
-    // HEADER ::= FTYP FNAME( VNAME , VNAME , VNAME )
-    private boolean checkHeader() {
-        if (match(TokenType.NUM) || match(TokenType.VOID)) {
-            Token fname = currentToken();
-            if (fname.type == TokenType.FNAME) {
-                advance();
-                if (match(TokenType.LPAREN)) {
-                    if (checkParamList()) {
-                        return match(TokenType.RPAREN);
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    // Check parameter list (three VNAMEs)
-    private boolean checkParamList() {
-        return match(TokenType.VNAME) && match(TokenType.COMMA)
-                && match(TokenType.VNAME) && match(TokenType.COMMA)
-                && match(TokenType.VNAME);
-    }
-
-    // BODY ::= PROLOG LOCVARS ALGO EPILOG SUBFUNCS end
-    private boolean checkBody() {
-        return match(TokenType.PROLOG) && checkLocVars() && checkAlgo() && match(TokenType.EPILOG) && checkSubFuncs() && match(TokenType.END);
-    }
-
-    // LOCVARS ::= VTYP1 VNAME1 , VTYP2 VNAME2 , VTYP3 VNAME3
-    private boolean checkLocVars() {
-        for (int i = 0; i < 3; i++) {
-            if (!checkVarDecl()) {
+    private boolean typecheckINSTRUC(Node instrucNode) {
+        for (Node instruc : instrucNode.getChildren()) {
+            if (!typecheckCOMMAND(instruc)) {
                 return false;
             }
         }
         return true;
     }
 
-    // Check variable declaration
-    private boolean checkVarDecl() {
-        if (match(TokenType.NUM) || match(TokenType.TEXT)) {
-            if (match(TokenType.VNAME)) {
-                return match(TokenType.COMMA);
+    private boolean typecheckBranch(Node commandNode) {
+        Node condNode = commandNode.getChildren().get(0); // COND
+        String condType = typeof(condNode);
+        if (condType.equals("b")) { // Assuming "b" is for boolean
+            return typecheckALGO(commandNode.getChildren().get(1)) && typecheckALGO(commandNode.getChildren().get(2)); // ALGO1 and ALGO2
+        }
+        return false; // The condition is not of boolean type
+    }
+
+    private boolean typecheckCOMMAND(Node commandNode) {
+        switch (commandNode.getSymbol()) {
+            case "SkipCommand":
+            case "HaltCommand":
+                return true; // Base-case for simple commands
+            case "PrintCommand":
+                return typecheckPrintCommand(commandNode);
+            case "ReturnCommand":
+                return typecheckReturn(commandNode);
+            case "AssignCommand":
+                return typecheckAssign(commandNode);
+            case "CallCommand":
+                return typecheckCall(commandNode);
+            case "BranchCommand":
+                return typecheckBranch(commandNode);
+            default:
+                return false; // Unrecognized command
+        }
+    }
+
+    private boolean typecheckPrintCommand(Node commandNode) {
+        Node atomicNode = commandNode.getChildren().get(0); // Assume ATOMIC is the first child
+        String atomicType = typeof(atomicNode);
+        return atomicType.equals("n") || atomicType.equals("t");
+    }
+
+    private boolean typecheckReturn(Node commandNode) {
+        Node atomicNode = commandNode.getChildren().get(0); // Assume ATOMIC is the first child
+        String atomicType = typeof(atomicNode);
+        String returnType = typeof(commandNode);
+        return atomicType.equals(returnType);
+    }
+
+    private boolean typecheckAssign(Node commandNode) {
+        Node vNameNode = commandNode.getChildren().get(0); // VNAME
+        Node termNode = commandNode.getChildren().get(1); // TERM
+        String vNameType = typeof(vNameNode);
+        String termType = typeof(termNode);
+        return vNameType.equals(termType);
+    }
+
+    private boolean typecheckCall(Node commandNode) {
+        // Implement the logic for CALL commands
+        return true; // Placeholder
+    }
+
+    public boolean typecheckLOCVARS(Node locVarsNode) {
+        // Assuming locVarsNode has children that contain VTYP and VNAME pairs
+        List<Node> children = locVarsNode.getChildren();
+
+        for (int i = 0; i < children.size(); i += 2) { // Step by 2 (VTYP, VNAME)
+            String vType = children.get(i).getSymbol(); // VTYP
+            String vName = children.get(i + 1).getSymbol(); // VNAME
+
+            // Get the type from the symbol table
+            String typeFromSymbolTable = symbolTable.getType(vName);
+
+            // Link the type in the symbol table
+            symbolTable.addSymbol(vName, vType, null); // Assume value is null for declaration
+
+            // Ensure the types match
+            if (!vType.equals(typeFromSymbolTable)) {
+                throw new RuntimeException("Type mismatch for variable " + vName);
             }
         }
-        return false;
+
+        return true; // Return true if all variable declarations are correct
     }
 
-    // SUBFUNCS ::= FUNCTIONS
-    private boolean checkSubFuncs() {
-        return checkFunctions();
+    private String typeofCall(Node callNode) {
+        // Assuming FNAME is the first child and we need to validate its type
+        Node fNameNode = callNode.getChildren().get(0); // FNAME
+        // Implement logic to check the return type of the function here
+        // return symbolTable.getReturnType(fNameNode.getSymbol()); // Consult symbol table for return type
+        return "null";
     }
 
-    public boolean typecheck(Node node) {
-        String nodeType = node.getType();  // Assume Node has a getType() method
+    public boolean typecheckSUBFUNCS(Node subFuncsNode) {
+        // Assuming subFuncsNode is a single node containing all functions
+        return typecheckFUNCTIONS(subFuncsNode); // Call the existing typecheck for FUNCTIONS
+    }
 
-        // Check the node type and apply type-checking rules
-        switch (nodeType) {
-            case "CONST":
-                // A constant has a type based on its value (number, text, etc.)
-                Token token = node.getToken(); // Get the token associated with the node
-                if (token.type == TokenType.CONST) {
-                    return true; // Numeric constant is valid
-                } else if (token.type == TokenType.TEXT) {
-                    return true; // Text constant is valid
-                } else {
-                    return false; // Invalid constant type
-                }
+    private boolean typecheckFUNCTIONS(Node functionsNode) {
+        for (Node function : functionsNode.getChildren()) {
+            if (!typecheckDECL(function)) {
+                return false;
+            }
+        }
+        return true;
+    }
 
-            case "VNAME":
-                // Variable name, check its type in the symbol table
-                String varName = node.getToken().getData(); // Get the variable name
-                if (symbolTable.containsKey(varName)) {
-                    return true; // Variable is declared and its type is known
-                } else {
-                    throw new RuntimeException("Variable " + varName + " not declared");
-                }
+    public boolean typecheckBODY(Node bodyNode) {
+        // Assuming bodyNode has children in the order: PROLOG, LOCVARS, ALGO, EPILOG, SUBFUNCS
+        List<Node> children = bodyNode.getChildren();
 
-            case "ASSIGN":
-                // Assignment, ensure the left-hand side (variable) and right-hand side (expression) types match
-                Node lhs = node.getLeftChild(); // Variable being assigned to
-                Node rhs = node.getRightChild(); // Expression being assigned
+        // Ensure correct number of children
+        if (children.size() != 5) {
+            throw new RuntimeException("Invalid BODY structure. Expected 5 components.");
+        }
 
-                String lhsType = typeof(lhs);
-                String rhsType = typeof(rhs);
+        // Decompose the body into its components
+        Node prologNode = children.get(0);  // PROLOG
+        Node locVarsNode = children.get(1); // LOCVARS
+        Node algoNode = children.get(2);     // ALGO
+        Node epilogNode = children.get(3);   // EPILOG
+        Node subFuncsNode = children.get(4); // SUBFUNCS
 
-                if (!lhsType.equals(rhsType)) {
-                    throw new RuntimeException("Type mismatch in assignment: " + lhsType + " = " + rhsType);
-                }
+        // Type check each component and combine results
+        return typecheckPROLOG(prologNode)
+                && typecheckLOCVARS(locVarsNode)
+                && typecheckALGO(algoNode)
+                && typecheckEPILOG(epilogNode)
+                && typecheckSUBFUNCS(subFuncsNode);
+    }
 
-                // Recursively check the right-hand side expression
-                return typecheck(rhs);
+    public boolean typecheckPROLOG(Node prologNode) {
+        // Base case for type-checking PROLOG
+        return true; // Always returns true
+    }
 
-            case "BINOP":
-                // Binary operator, ensure both operands have the correct types
-                Node leftOperand = node.getLeftChild();
-                Node rightOperand = node.getRightChild();
-                String opType = node.getToken().getData(); // Operator (e.g., "+", "-", "*", "/")
+    public boolean typecheckEPILOG(Node epilogNode) {
+        // Base case for type-checking EPILOG
+        return true; // Always returns true
+    }
 
-                String leftType = typeof(leftOperand);
-                String rightType = typeof(rightOperand);
+    private boolean typecheckDECL(Node declNode) {
+        Node headerNode = declNode.getChildren().get(0); // HEADER
+        Node bodyNode = declNode.getChildren().get(1); // BODY
+        return typecheckHEADER(headerNode) && typecheckBODY(bodyNode);
+    }
 
-                if (!leftType.equals(rightType)) {
-                    throw new RuntimeException("Type mismatch in binary operation: " + leftType + " " + opType + " " + rightType);
-                }
+    public boolean typecheckHEADER(Node headerNode) {
+        // Assuming headerNode has children in the order: FTYP, FNAME, VNAME1, VNAME2, VNAME3
+        List<Node> children = headerNode.getChildren();
 
-                if (!isValidOperation(leftOperand, rightOperand, opType)) {
-                    throw new RuntimeException("Invalid operation: " + opType + " for types " + leftType + " and " + rightType);
-                }
+        // Ensure correct number of children
+        if (children.size() != 5) {
+            throw new RuntimeException("Invalid HEADER structure. Expected 5 components.");
+        }
 
-                // Recursively type check both operands
-                return typecheck(leftOperand) && typecheck(rightOperand);
+        // Decompose the header into its components
+        Node ftypNode = children.get(0);    // FTYP
+        Node fnameNode = children.get(1);    // FNAME
+        Node vname1Node = children.get(2);    // VNAME1
+        Node vname2Node = children.get(3);    // VNAME2
+        Node vname3Node = children.get(4);    // VNAME3
 
-            case "CALL":
-                // Function call, check the types of arguments and the return type
-                // Example: CALL ::= FNAME( ARG1, ARG2, ARG3 )
-                List<Node> arguments = node.getChildren(); // Assume this method retrieves function arguments
+        // Get the return type from FTYP
+        String returnType = typeof(ftypNode);
+        String functionName = fnameNode.getSymbol(); // Assuming FNAME has the function's name
 
-                // Fetch the function's signature (argument types and return type)
-                Token funcToken = currentToken();
-                String functionName = node.getToken().getData(); // Function name
-                FunctionSignature signature = functionTable.get(funcToken.data); // Retrieve function signature
+        // Link the function's return type to the symbol table
+        if (!symbolTable.containsSymbol(functionName)) {
+            throw new RuntimeException("Function " + functionName + " is not declared.");
+        }
 
-                if (arguments.size() != signature.getParamTypes().size()) {
-                    throw new RuntimeException("Argument count mismatch in function call: " + functionName);
-                }
+        // Retrieve the function identifier from the symbol table
+        String functionId = functionName; // Assuming this is how you get the function's ID
+        symbolTable.link(returnType, functionId); // Link the return type to the function
 
-                for (int i = 0; i < arguments.size(); i++) {
-                    Node arg = arguments.get(i);
-                    String argType = typeof(arg);
-                    String expectedType = signature.getParamTypes().get(i);
+        // Ensure that the function name type matches the return type
+        if (!returnType.equals(symbolTable.getType(functionId))) {
+            return false; // Return type mismatch
+        }
 
-                    if (!argType.equals(expectedType)) {
-                        throw new RuntimeException("Argument type mismatch in function call: expected " + expectedType + " but got " + argType);
-                    }
+        // Check types of VNAME1, VNAME2, and VNAME3
+        String typeVName1 = typeof(vname1Node);
+        String typeVName2 = typeof(vname2Node);
+        String typeVName3 = typeof(vname3Node);
 
-                    // Recursively type check the argument
-                    if (!typecheck(arg)) {
-                        return false;
-                    }
-                }
-
-                return true;
-
-            default:
-                // For any other node types, check if they're valid or throw an error
-                throw new RuntimeException("Unknown node type for typechecking: " + nodeType);
+        // Verify all parameters are of type 'n' (numeric)
+        if (typeVName1.equals("n") && typeVName2.equals("n") && typeVName3.equals("n")) {
+            return true; // All parameter types are numeric
+        } else {
+            return false; // Parameter type mismatch
         }
     }
 
-    public String typeof(Node node) {
-        String nodeType = node.getType();  // Get the node type (e.g., CONST, VNAME, BINOP, etc.)
+    // Method to typecheck COND
+    public String typecheckCOND(Node condNode) {
+        // if (condNode.isSIMPLE()) {
+        //     return typecheckSIMPLE(condNode);
+        // } else if (condNode.isCOMPOSIT()) {
+        //     return typecheckCOMPOSIT(condNode);
+        // }
+        return "u"; // Undefined for other cases
+    }
 
-        switch (nodeType) {
-            case "CONST":
-                // For constants, return the type based on the value (assuming token class is used to identify type)
-                Token token = node.getToken(); // Get the associated token
+    // Method to typecheck SIMPLE
+    public String typecheckSIMPLE(Node simpleNode) {
+        Node binopNode = simpleNode.getChild(0); // Assuming first child is BINOP
+        Node atomic1Node = simpleNode.getChild(1); // Assuming second child is ATOMIC1
+        Node atomic2Node = simpleNode.getChild(2); // Assuming third child is ATOMIC2
 
-                if (token.type == TokenType.CONST) {
-                    return "num";  // Numeric constant (integer)
-                } else if (token.type == TokenType.TEXT) {
-                    return "text";  // Text constant (string)
-                } else {
-                    throw new RuntimeException("Unknown constant type for token: " + token.getData());
-                }
+        String binopType = typeof(binopNode);
+        String atomic1Type = typeof(atomic1Node);
+        String atomic2Type = typeof(atomic2Node);
 
-            case "VNAME":
-                // For variables, return the type from the symbol table
-                String varName = node.getToken().getData(); // Get the variable name
-                if (symbolTable.containsKey(varName)) {
-                    return symbolTable.get(varName);  // Return the type of the variable
-                } else {
-                    throw new RuntimeException("Variable " + varName + " is not declared");
-                }
-
-            case "ASSIGN":
-                // For assignments, return the type of the right-hand side (RHS)
-                Node rhs = node.getRightChild();
-                return typeof(rhs);  // The type of the RHS expression
-
-            case "BINOP":
-                // For binary operations, ensure both operands have the same type and return that type
-                Node leftOperand = node.getLeftChild();
-                Node rightOperand = node.getRightChild();
-                String leftType = typeof(leftOperand);
-                String rightType = typeof(rightOperand);
-
-                if (!leftType.equals(rightType)) {
-                    throw new RuntimeException("Type mismatch in binary operation: " + leftType + " and " + rightType);
-                }
-
-                // Assuming the operation is valid (checked elsewhere), return the type of the operands
-                return leftType;
-
-            case "CALL":
-                // For function calls, return the return type of the function
-                Token funcToken = currentToken();
-                String functionName = node.getToken().getData(); // Function name
-                FunctionSignature signature = functionTable.get(funcToken.data); // Retrieve function signature
-
-                // Return the return type of the function
-                return signature.getReturnType();
-
-            case "IF":
-            case "WHILE":
-                // Conditional statements, the condition must be a boolean
-                Node condition = node.getLeftChild();
-                String conditionType = typeof(condition);
-
-                if (!conditionType.equals("bool")) {
-                    throw new RuntimeException("Condition in " + nodeType + " statement must be of type 'bool'");
-                }
-
-                // No specific return type for control flow, so returning null
-                return null;
-
-            default:
-                // For any other node types, throw an error as they should be handled separately
-                throw new RuntimeException("Unknown node type for typeof: " + nodeType);
+        // Check conditions for SIMPLE
+        if (binopType.equals(atomic1Type) && atomic1Type.equals(atomic2Type) && atomic1Type.equals("b")) {
+            return "b"; // Both operands are boolean
+        } else if (binopType.equals("c") && atomic1Type.equals("n") && atomic2Type.equals("n")) {
+            return "b"; // Comparison type with numeric operands
+        } else {
+            return "u"; // Undefined
         }
     }
 
-    public boolean isValidOperation(Node leftOperand, Node rightOperand, String operationType) {
-        String leftType = typeof(leftOperand);
-        String rightType = typeof(rightOperand);
+    // Method to typecheck COMPOSIT
+    public String typecheckCOMPOSIT(Node compositNode) {
+        if (compositNode.symbol.equals("BINOP")) {
+            Node simple1Node = compositNode.getChild(0); // First SIMPLE
+            Node simple2Node = compositNode.getChild(1); // Second SIMPLE
 
-        // Example checks for different operation types
-        return switch (operationType) {
-            case "add", "sub", "mul", "div" ->
-                leftType.equals("num") && rightType.equals("num");
-            case "eq", "grt", "or", "and" ->
-                (leftType.equals("num") || leftType.equals("text"))
-                && (rightType.equals("num") || rightType.equals("text"));
-            default ->
-                false;
-        }; // Numeric operations require both operands to be numeric
-        // Comparison operations can be applied to numeric or boolean types
-        // Add other cases for different operation types as needed
-        // Unknown operation type
+            String binopType = typeof(compositNode);
+            String simple1Type = typecheckSIMPLE(simple1Node);
+            String simple2Type = typecheckSIMPLE(simple2Node);
+
+            // Check conditions for COMPOSIT with binary operation
+            if (binopType.equals(simple1Type) && simple1Type.equals(simple2Type) && simple1Type.equals("b")) {
+                return "b"; // Both operands are boolean
+            } else {
+                return "u"; // Undefined
+            }
+        } else if (compositNode.symbol.equals("UNOP")) {
+            Node simpleNode = compositNode.getChild(0); // Assuming UNOP has one SIMPLE
+
+            String unopType = typeof(compositNode);
+            String simpleType = typecheckSIMPLE(simpleNode);
+
+            // Check conditions for COMPOSIT with unary operation
+            if (unopType.equals(simpleType) && simpleType.equals("b")) {
+                return "b"; // Result is boolean
+            } else {
+                return "u"; // Undefined
+            }
+        }
+
+        return "u"; // Undefined for other cases
+    }
+
+    private String getMatchingFunctionType(Node returnCommand) {
+        // Implement logic to determine the type of the function being returned from
+        return "n"; // Placeholder
+    }
+
+    private boolean typecheckOp(Node opNode) {
+        Node binopNode = opNode.getChildren().get(0); // BINOP
+        Node arg1Node = opNode.getChildren().get(1); // ARG1
+        Node arg2Node = opNode.getChildren().get(2); // ARG2
+
+        String binopType = typeof(binopNode);
+        String arg1Type = typeof(arg1Node);
+        String arg2Type = typeof(arg2Node);
+
+        if (binopType.equals(arg1Type) && arg1Type.equals(arg2Type)) {
+            if (arg1Type.equals("b")) {
+                return true; // Boolean operation
+            } else if (arg1Type.equals("n")) {
+                return true; // Numeric operation
+            } else if (binopType.equals("c") && arg1Type.equals("n") && arg2Type.equals("n")) {
+                return true; // Comparison operation
+            }
+        }
+
+        return false; // Undefined operation
+    }
+
+    private String typeofUnop(Node unopNode) {
+        String operator = unopNode.getSymbol();
+        switch (operator) {
+            case "not":
+                return "b"; // Boolean type
+            case "sqrt":
+                return "n"; // Numeric type
+            // Add more unary operations as needed
+            default:
+                return null; // Undefined
+        }
+    }
+
+    private String typeofOp(Node opNode) {
+        Node binopNode = opNode.getChildren().get(0); // Assuming BINOP is the first child
+        Node arg1Node = opNode.getChildren().get(1); // Assuming ARG1 is the second child
+        Node arg2Node = opNode.getChildren().get(2); // Assuming ARG2 is the third child
+
+        String binopType = typeof(binopNode);
+        String arg1Type = typeof(arg1Node);
+        String arg2Type = typeof(arg2Node);
+
+        if (binopType.equals(arg1Type) && arg1Type.equals(arg2Type)) {
+            if (arg1Type.equals("b")) {
+                return "b"; // Boolean type
+            } else if (arg1Type.equals("n")) {
+                return "n"; // Numeric type
+            } else if (binopType.equals("c") && arg1Type.equals("n") && arg2Type.equals("n")) {
+                return "b"; // Comparison operation
+            }
+        }
+
+        return "u"; // Undefined
+    }
+
+    private String typeofBinop(Node binopNode) {
+        String operator = binopNode.getSymbol();
+        switch (operator) {
+            case "or":
+            case "and":
+                return "b"; // Boolean type
+            case "eq":
+            case "grt":
+                return "c"; // Comparison type
+            case "add":
+            case "sub":
+            case "mul":
+            case "div":
+                return "n"; // Numeric type
+            default:
+                return null; // Undefined
+        }
     }
 
 }
