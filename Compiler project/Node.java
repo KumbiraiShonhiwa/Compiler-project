@@ -54,4 +54,29 @@ public class Node {
     public int getUnid() {
         return unid;
     }
+
+    public Node getChild(String symbol) {
+        for (Node child : children) {
+            if (child.symbol.equals(symbol)) {
+                return child;
+            }
+        }
+        return null;
+    }
+    
+    public boolean hasChild(String symbol) {
+        for (Node child : children) {
+            if (child.symbol.equals(symbol)) {
+                return true; // Return true if a matching child is found
+            }
+        }
+        return false; // Return false if no matching child is found
+    }
+
+    public Node getFirstChild() {
+        if (!children.isEmpty()) {
+            return children.get(0); // Return the first child if it exists
+        }
+        return null; 
+    }
 }

@@ -48,6 +48,7 @@ public class RecSPLParser {
     private SymbolTable symbolTable;
     private Map<String, FunctionSignature> functionTable;
     private String darkart = "darkart";
+    
 
     private int getNextNodeId() {
         return nodeIdCounter++;
@@ -788,7 +789,7 @@ public class RecSPLParser {
 
     public static void main(String[] args) {
         // Define the path to the XML file in the project directory
-        String inputFile = "Compiler project//input8.txt"; // Adjust this path as per your project structure
+        String inputFile = "input3.txt"; // Adjust this path as per your project structure
         String xmlOutputFile = "tokens_output.xml";
         String xmlOutputFileSyntaxTree = "syntax_tree.xml";
         try {
@@ -812,6 +813,7 @@ public class RecSPLParser {
                 System.out.println(key + " : " + value);
                 System.out.println(value.getParamTypes());
             });
+            System.out.println("function analysis ");
             // Step 4: Semantic Analysis of functions
             Node functionNode = new Node(0, "ROOT", null);
             RecSPLParser parserFunction = new RecSPLParser(parser, functionNode);
@@ -824,6 +826,18 @@ public class RecSPLParser {
             // System.out.println(syntaxTreeXML);
 
             // Step 5: Typechecking
+            System.out.println("call typechecker ");
+            RecSPLTypeCheckerA typeChecker = new RecSPLTypeCheckerA(parser.symbolTable);
+   
+            if (typeChecker.typecheck(parser.syntaxTree))
+            {
+                System.out.println("type checking successful");
+            }
+            else
+            {
+                System.out.println("type checking unsuccessful");
+            }
+
             System.out.println("Parsing completed successfully. No syntax errors found.");
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
