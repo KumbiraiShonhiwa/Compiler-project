@@ -1,35 +1,42 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "java",
-            "name": "RecSPLParser",
-            "request": "launch",
-            "mainClass": "RecSPLParser",
-            "projectName": "Compiler project_818b07a"
-        },
-        {
-            "type": "java",
-            "name": "Current File",
-            "request": "launch",
-            "mainClass": "${file}"
-        },
-        {
-            "type": "java",
-            "name": "RecSPLLexer",
-            "request": "launch",
-            "mainClass": "RecSPLLexer",
-            "projectName": "Compiler project_818b07a"
-        },
-        {
-            "type": "java",
-            "name": "Debug RecSPLParser",
-            "request": "launch",
-            "mainClass": "RecSPLParser",
-            "projectName": "YourProjectName"
-        }
-    ]
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "RecSPLParser",
+      "request": "launch",
+      "mainClass": "RecSPLParser",
+      "projectName": "Compiler-project_1c9192bd"
+    },
+    {
+      "type": "java",
+      "name": "RecSPLParser",
+      "request": "launch",
+      "mainClass": "RecSPLParser",
+      "projectName": "Compiler project_818b07a"
+    },
+    {
+      "type": "java",
+      "name": "Current File",
+      "request": "launch",
+      "mainClass": "${file}"
+    },
+    {
+      "type": "java",
+      "name": "RecSPLLexer",
+      "request": "launch",
+      "mainClass": "RecSPLLexer",
+      "projectName": "Compiler project_818b07a"
+    },
+    {
+      "type": "java",
+      "name": "Debug RecSPLParser",
+      "request": "launch",
+      "mainClass": "RecSPLParser",
+      "projectName": "YourProjectName"
+    }
+  ]
 }
