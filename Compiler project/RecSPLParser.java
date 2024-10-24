@@ -106,7 +106,7 @@ public class RecSPLParser {
     private void expect(TokenType expectedType, Node parentNode) throws Exception {
         Token token = getCurrentToken();
         if (token == null || token.type != expectedType) {
-            throw new Exception("Expected " + expectedType + " but found " + (token != null ? token.type : "null"));
+            throw new Exception("Syntax Error Found: Expected " + expectedType + " but found " + (token != null ? token.type : "null"));
         }
         // Node childNode = new Node(nodeIdCounter++, token.type.toString());
         // parentNode.addChild(childNode);
@@ -253,7 +253,7 @@ public class RecSPLParser {
                 parseAtomic(commandNode); // parse the atomic expression after return
             }
             default ->
-                throw new Exception("Unexpected command: " + token);
+                throw new Exception("Syntax Error Found: Unexpected command: " + token);
         }
     }
 
@@ -272,7 +272,7 @@ public class RecSPLParser {
             expect(TokenType.CONST2, parentNode); // match constant number
             return getAssignedType(token.data);
         } else {
-            throw new Exception("Syntax Error " + token.type);
+            throw new Exception("Syntax Error Found:  " + token.type);
         }
     }
 
@@ -291,7 +291,7 @@ public class RecSPLParser {
 
         Token token = getCurrentToken();
         if (null == token.type) {
-            throw new Exception("Invalid assignment syntax");
+            throw new Exception("Syntax Error Found: Invalid assignment syntax");
         } else {
             switch (token.type) {
                 case EQUALS -> {
@@ -456,7 +456,7 @@ public class RecSPLParser {
             // COMPOSITE condition with a unary operation
             parseComposit(parentNode);
         } else {
-            throw new Exception("Expected BINOP or UNOP in condition but found: " + currentToken.type);
+            throw new Exception("Syntax Error Found: Expected BINOP or UNOP in condition but found: " + currentToken.type);
         }
     }
 
@@ -501,7 +501,7 @@ public class RecSPLParser {
 
             expect(TokenType.RPAREN, compositeNode); // Expect ')'
         } else {
-            throw new Exception("Expected UNOP or BINOP for COMPOSITE condition but found: " + currentToken.type);
+            throw new Exception("Syntax Error Found: Expected UNOP or BINOP for COMPOSITE condition but found: " + currentToken.type);
         }
     }
 
@@ -520,10 +520,10 @@ public class RecSPLParser {
                 case UNOP, BINOP ->
                     type = parseOp(termNode);
                 default ->
-                    throw new Exception("Expected term but found " + token);
+                    throw new Exception("Syntax Error Found: Expected term but found " + token);
             }
         } else {
-            throw new Exception("Expected term but found " + token);
+            throw new Exception("Syntax Error Found: Expected term but found " + token);
         }
         return type;
     }
@@ -533,7 +533,7 @@ public class RecSPLParser {
         Token currentToken = getCurrentToken();
         String type = expectedType(currentToken);
         if (null == currentToken.type) {
-            throw new Exception("Expected UNOP or BINOP, but found: " + currentToken.type);
+            throw new Exception("Syntax Error Found: Expected UNOP or BINOP, but found: " + currentToken.type);
         } else // Determine whether it's a unary or binary operation based on the next token
         {
             switch (currentToken.type) {
@@ -542,7 +542,7 @@ public class RecSPLParser {
                 case BINOP -> // If it's a binary operation
                     parseBinaryOp(parentNode);
                 default ->
-                    throw new Exception("Expected UNOP or BINOP, but found: " + currentToken.type);
+                    throw new Exception("Syntax Error Found: Expected UNOP or BINOP, but found: " + currentToken.type);
             }
         }
         return type;
@@ -579,7 +579,7 @@ public class RecSPLParser {
             case "div":
                 return "num";
             default:
-                throw new AssertionError("Unexpected token: " + token.data);
+                throw new AssertionError("Sytax Error Found: Unexpected token: " + token.data);
         }
     }
 
@@ -606,7 +606,7 @@ public class RecSPLParser {
     private void parseArg(Node parentNode) throws Exception {
         Token currentToken = getCurrentToken();
         if (null == currentToken.type) {
-            throw new Exception("Expected ATOMIC or OP, but found: " + currentToken.type);
+            throw new Exception("Syntax Error Found: Expected ATOMIC or OP, but found: " + currentToken.type);
         } else {
             Node argNode = new Node(nodeIdCounter++, "ARG");
             syntaxTree.addInnerNode(argNode);
@@ -617,7 +617,7 @@ public class RecSPLParser {
                 case UNOP, BINOP -> // If it's an operation (recursive parsing of OP)
                     parseOp(parentNode);
                 default ->
-                    throw new Exception("Expected ATOMIC or OP, but found: " + currentToken.type);
+                    throw new Exception("Syntax Error Found: Expected ATOMIC or OP, but found: " + currentToken.type);
             }
         }
     }
@@ -640,7 +640,7 @@ public class RecSPLParser {
         } else if (token == null) {
             // System.out.println("End of input");
         } else if (token.type != TokenType.NUM && token.type != TokenType.VOID) {
-            throw new Exception("Expected function type but found " + token);
+            throw new Exception("Syntax Error Found: Expected function type but found " + token);
         }
     }
 
@@ -764,7 +764,7 @@ public class RecSPLParser {
         if (token.type == TokenType.NUM || token.type == TokenType.VOID) {
             expect(token.type, fTypeNode); // match num or void
         } else {
-            throw new Exception("Expected function type (num or void) but found " + token);
+            throw new Exception("Syntax Error Found: Expected function type (num or void) but found " + token);
         }
         return token.data;
     }
@@ -776,7 +776,7 @@ public class RecSPLParser {
     //     Token currentToken = getCurrentToken();
     //     if (null == currentToken.type) {
     //         // If it's not a valid type, throw an error
-    //         throw new Exception("Expected a type, but found: " + currentToken.data);
+    //         throw new Exception("Syntax Error Found: Expected a type, but found: " + currentToken.data);
     //     } else // Check the token for a valid type
     //     {
     //         switch (currentToken.type) {
@@ -791,7 +791,7 @@ public class RecSPLParser {
     //             case VOID:
     //             default:
     //                 // If it's not a valid type, throw an error
-    //                 throw new Exception("Expected a type, but found: " + currentToken.data);
+    //                 throw new Exception("Syntax Error Found: Expected a type, but found: " + currentToken.data);
     //         }
     //     }
     // }
@@ -804,7 +804,7 @@ public class RecSPLParser {
 
         if (null == currentToken.type) {
             // If it's not a valid type, throw an error
-            throw new Exception("Expected a type, but found: " + currentToken.data);
+            throw new Exception("Syntax Error Found: Expected a type, but found: " + currentToken.data);
         } else // Check the token for a valid type
         {
             switch (currentToken.type) {
@@ -819,7 +819,7 @@ public class RecSPLParser {
                 case VOID:
                 default:
                     // If it's not a valid type, throw an error
-                    throw new Exception("Expected a type, but found: " + currentToken.data);
+                    throw new Exception("Syntax Error Found: Expected a type, but found: " + currentToken.data);
             }
         }
     }
