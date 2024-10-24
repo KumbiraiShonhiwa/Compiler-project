@@ -1,56 +1,48 @@
-Parser Project README
+Compiler Project
 Overview
-This project implements a parser that processes a structured input file (e.g., input8.txt), performs lexical analysis, syntax parsing, semantic analysis, type checking, and code generation, and outputs tokens, a syntax tree, and final translated code.
+This project is a compiler that processes input files written in a specific programming language and generates BASIC code as output. The compiler performs lexing, parsing, semantic analysis, type checking, and code generation.
 
-The project is structured around the following key steps:
+Requirements
+Java Development Kit (JDK) 8 or higher installed on your system.
+Ensure that your input files are formatted correctly as per the specifications of the compiler.
+Building the Project
+Clone the repository or download the project files to your local machine.
 
-Lexing: Converts the input file into tokens.
-Parsing: Generates a syntax tree from the tokens.
-Semantic Analysis: Checks for function and variable consistency.
-Type Checking: Ensures type correctness of the parsed program.
-Code Generation: Outputs final translated code and converts it into BASIC format.
-Prerequisites
-Before running the project, make sure you have:
+Open a terminal or command prompt and navigate to the project directory.
 
-Java Development Kit (JDK) installed.
-A correctly structured input file (e.g., input8.txt) in the specified directory.
-Project Structure
-Input File:
+Compile the Java files:
 
-Path to the input file: Compiler project//input8.txt. Update this path based on your project structure.
-The input file contains the source code to be lexed, parsed, and processed by the compiler components.
-Output Files:
+bash
+Copy code
+javac *.java
+Create the JAR file:
 
-tokens_output.xml: This file will contain the generated tokens in XML format.
-syntax_tree.xml: This file will contain the parsed syntax tree in XML format.
-output.txt: Intermediate output generated from the code.
-basic_output.bas: Final BASIC translated code.
-How to Run
-Set up the Input File: Ensure that your input file (e.g., input8.txt) is located in the specified directory Compiler project. Adjust the path in the code if necessary.
+bash
+Copy code
+jar cfm CompilerProject.jar MANIFEST.MF *.class
+Running the Compiler
+To run the compiler, use the following command:
 
-Run the code using VS Code the command used was machine specific but we will provide the command:
+java -jar CompilerProject.jar <inputFile> <outputFile>
 
-c:; cd 'c:\Users\Kumbirai\OneDrive\Documents\GitHub\Compiler-project'; & 'C:\Program Files\Eclipse Adoptium\jdk-17.0.12.7-hotspot\bin\java.exe' '-XX:+ShowCodeDetailsInExceptionMessages' '-cp' 'C:\Users\Kumbirai\AppData\Roaming\Code\User\workspaceStorage\9221b6f5151aa2cec215095f87fb4bbe\redhat.java\jdt_ws\Compiler-project_301c5eb5\bin' 'MainClass' 
+Parameters
+<inputFile>: The path to the input file (e.g., input.txt) containing the source code to be compiled.
+<outputFile>: The path to the output file (e.g., output.txt) where the generated BASIC code will be written.
+Example
 
-Lexing: Tokenizes the input file and outputs the tokens into tokens_output.xml.
-Parsing: Builds a syntax tree and outputs it into syntax_tree.xml.
-Semantic Analysis: Checks for consistency in functions and variables.
-Type Checking: Verifies type correctness.
-Code Generation: Generates the final code and converts it into BASIC format (basic_output.bas).
-Review the Output:
+java -jar CompilerProject.jar input.txt output.txt
+This command will read input.txt, process it through the compiler, and write the output to output.txt.
 
-Syntax Tree: Open syntax_tree.xml to review the generated syntax tree.
-Translated Code: Open basic_output.bas for the final BASIC code output.
+Output
+The compiler will generate an output file containing the translated BASIC code based on the input provided.
+If additional outputs are generated (such as a syntax tree or tokens), they will be handled as specified in the code.
 Error Handling
-If the program encounters any issues during execution, an error message will be printed in the console with relevant details. Ensure that the input file is properly formatted and the paths are correctly set.
+If the program encounters any issues, error messages will be displayed in the terminal, indicating what went wrong. Ensure that your input file follows the expected syntax and formatting.
 
-Modifications
-Adjust Input/Output Paths: Modify the inputFile, xmlOutputFile, and xmlOutputFileSyntaxTree variables in the code to point to different files as needed.
+Contribution
+Feel free to contribute to the project by submitting issues or pull requests. Your feedback and suggestions are welcome!
 
-Troubleshooting
-File Not Found: Ensure that the input8.txt file exists in the specified location.
-Lexical Errors: if the lexer encounters invalid tokens
-Syntax Errors: If parsing or semantic analysis fails.
-Type Checking Failures: The type checker will print a failure message if any type errors are detected.
-Contact
-If you encounter any issues or have any questions, feel free to reach out via the project repository or email.
+License
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+You can add sections for more details like features, known issues, or additional usage examples as necessary. Let me know if you need further modifications or additional sections!
