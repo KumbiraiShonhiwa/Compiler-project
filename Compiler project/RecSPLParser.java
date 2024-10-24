@@ -828,7 +828,7 @@ public class RecSPLParser {
 
     public static void main(String[] args) {
         // Define the path to the XML file in the project directory
-        String inputFile = "Compiler project//input8.txt"; // Adjust this path as per your project structure
+        String inputFile = "input3.txt"; // Adjust this path as per your project structure
         String xmlOutputFile = "tokens_output.xml";
         String xmlOutputFileSyntaxTree = "syntax_tree.xml";
         try {
@@ -867,7 +867,17 @@ public class RecSPLParser {
             parser.syntaxTree.toXML(xmlOutputFileSyntaxTree);
             // System.out.println(syntaxTreeXML);
             System.out.println("Syntax tree output to " + xmlOutputFileSyntaxTree);
-            // Step 5: Typechecking
+            // Step 5: Typechecking 
+            System.out.println("Type checking start");
+   
+            RecSPLTypeChecker typeChecker = new RecSPLTypeChecker(parser.symbolTable);
+            boolean isTypeChecked = typeChecker.check(tokens);
+        
+            if (isTypeChecked) {
+                System.out.println("Type checking passed. Proceeding to the next stage.");
+            } else {
+                System.out.println("Type checking failed. Please fix the errors.");
+            }
             // Step 6: Code Generation
             CodeGenerator codeGenerator = new CodeGenerator(tokens, parserFunction.symbolTable, parserFunction.functionTable);
             String code = codeGenerator.translate();
@@ -875,6 +885,9 @@ public class RecSPLParser {
             ConvertToBasic converter = new ConvertToBasic();
             converter.convertToBasic("output.txt", "basic_output.bas");
 
+           
+
+            System.out.println("Parsing completed successfully. No syntax errors found.");
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
         }

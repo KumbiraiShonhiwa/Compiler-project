@@ -86,29 +86,33 @@ public class RecSPLLexer {
         doc.appendChild(rootElement);
         for (Token token : tokens) {
             Element tokenElement = doc.createElement("TOK");
-
+    
             Element id = doc.createElement("ID");
             id.appendChild(doc.createTextNode(String.valueOf(token.id)));
             tokenElement.appendChild(id);
-
+    
             Element tokenClass = doc.createElement("CLASS");
             tokenClass.appendChild(doc.createTextNode(token.type.name()));
             tokenElement.appendChild(tokenClass);
-
+    
             Element word = doc.createElement("WORD");
             word.appendChild(doc.createTextNode(token.data));
             tokenElement.appendChild(word);
-
+    
             rootElement.appendChild(tokenElement);
         }
-
+    
+        // Configure the transformer to add indentation
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
         Transformer transformer = transformerFactory.newTransformer();
+        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+    
         DOMSource source = new DOMSource(doc);
         StreamResult result = new StreamResult(new File(outputPath));
         transformer.transform(source, result);
     }
-
+    
     public static void main(String[] args) {
         System.out.println(args.length);
         if (args.length != 1) {
