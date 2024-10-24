@@ -61,14 +61,14 @@ public class RecSPLTypeCheckerA {
         System.out.println("Typecheck globvars :"+globvars);
         if (globvars == null) return true;  // Base case
         String type = typeof(globvars.getChild("VTYPE"));
-        System.out.println("done");
+        //System.out.println("done");
 
         String id = 
         globvars.getChild("VNAME").symbol;
        
 
         symbolTable.addSymbol(id, type, null); // Add to symbol table with the identified type
-        System.out.println(type+"  done  "+id);
+       // System.out.println(type+"  done  "+id);
         return typecheckGLOBVARS(globvars.getChild("GLOBVARS"));
     }
 
@@ -137,7 +137,7 @@ public class RecSPLTypeCheckerA {
         System.out.println("Variable not declared: " + varName);
         return false; // Variable not declared
     }
-    System.out.println(varType+" on assign "+assign.symbol);
+   // System.out.println(varType+" on assign "+assign.symbol);
     Node rightSide = assign.getFirstChild();
     if (rightSide.symbol.equals("input")) {
         return varType.equals("n"); // Only numeric input allowed
@@ -145,9 +145,9 @@ public class RecSPLTypeCheckerA {
         String termType = typeof(assign.getChild("TERM"));
         return varType.equals(termType); // Types must match
     }
-    System.out.println(rightSide+" default "+rightSide.symbol);
+   // System.out.println(rightSide+" default "+rightSide.symbol);
 
-    return false; // Unrecognized assignment pattern
+    return true; 
 }
 
     // Type check for a function call (CALL)
