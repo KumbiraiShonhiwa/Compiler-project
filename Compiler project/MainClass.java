@@ -15,15 +15,18 @@ public class MainClass {
             // Step 1: Read input file
             String input = new String(Files.readAllBytes(Paths.get(inputFile)));
             System.out.println("Input file contents:\n" + input);
+            
 
             // Step 2: Lexing process - generate tokens
             List<Token> tokens = RecSPLLexer.lex(input);
+            RecSPLLexer.writeTokensToXML(tokens, "tokens_output.xml");
             System.out.println("Lexing completed successfully. No errors found.");
 
             // Step 3: Parsing process
             Node rootNode = new Node(0, "ROOT", null);
             RecSPLParser parser = new RecSPLParser(tokens, rootNode);
             parser.parseProgram();
+            parser.syntaxTree.toXML("syntax_tree.xml");
             System.out.println("Parsing completed successfully. No syntax errors found.");
 
             // Step 4: Semantic Analysis
@@ -33,12 +36,21 @@ public class MainClass {
             System.out.println("Semantic Analysis completed successfully.");
 
             // Step 5: Typechecking
-            // RecSPLTypeCheckerA typeChecker = new RecSPLTypeCheckerA(parser.symbolTable);
-            // if (typeChecker.typecheck(parser.syntaxTree)) {
-            //     System.out.println("Type checking successful.");
-            // } else {
-            //     System.out.println("Type checking unsuccessful.");
-            // }
+            RecSPLTypeChecker typeChecker = new RecSPLTypeChecker(parser.symbolTable);
+            if (typeChecker.check(tokens)) {
+                System.out.println("Type checking successful.");
+                CodeGenerator codeGenerator = new CodeGenerator(tokens, parserFunction.symbolTable, parserFunction.functionTable);
+                String code = codeGenerator.translate();
+                codeGenerator.writeFormattedCodeToFile(outputFile);
+                System.out.println("Code written to " + outputFile);
+    
+                // Optional: Convert to BASIC format (if needed)
+                ConvertToBasic converter = new ConvertToBasic();
+                converter.convertToBasic(outputFile, "basic_output.bas");
+                System.out.println("BASIC code output to basic_output.bas");
+            } else {
+                System.out.println("Type checking unsuccessful.");
+            }
 
             // Step 6: Code Generation
             CodeGenerator codeGenerator = new CodeGenerator(tokens, parserFunction.symbolTable, parserFunction.functionTable);
@@ -49,7 +61,7 @@ public class MainClass {
             // Optional: Convert to BASIC format (if needed)
             ConvertToBasic converter = new ConvertToBasic();
             converter.convertToBasic(outputFile, "basic_output.bas");
-            System.out.println("BASIC code output to basic_output.bas");
+            // System.out.println("BASIC code output to basic_output.bas");
 
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
