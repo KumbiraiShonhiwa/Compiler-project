@@ -1,5 +1,6 @@
 main 
+num V_x
 begin 
-V_x1 = 0; 
-print V_x1; 
+V_x = 0; 
+print V_x; 
 end

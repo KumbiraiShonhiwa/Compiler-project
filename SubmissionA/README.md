@@ -12,11 +12,13 @@ Open a terminal or command prompt and navigate to the project directory.
 
 Compile the Java files:
 
-
+bash
+Copy code
 javac *.java
 Create the JAR file:
 
-
+bash
+Copy code
 jar cfm CompilerProject.jar MANIFEST.MF *.class
 Running the Compiler
 To run the compiler, use the following command:
@@ -30,8 +32,6 @@ Example
 
 java -jar CompilerProject.jar input.txt output.txt
 This command will read input.txt, process it through the compiler, and write the output to output.txt.
-
-Please enure that you have the following xml files (empty) in the folder directory to output the tokens xml and syntax tree xml.
 
 Output
 The compiler will generate an output file containing the translated BASIC code based on the input provided.
