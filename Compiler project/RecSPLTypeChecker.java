@@ -119,8 +119,11 @@ public class RecSPLTypeChecker {
         // Implement type checking for binary operations
         int index = tokens.indexOf(token);
         if (index > 0 && index < tokens.size() - 1) {
-            Token leftOperand = tokens.get(index - 1);
-            Token rightOperand = tokens.get(index + 1);
+
+            Token leftOperand = tokens.get(index - 2);
+            Token rightOperand = tokens.get(index + 2);
+
+            
 
             if (!isValidOperand(leftOperand) || !isValidOperand(rightOperand)) {
                 errors.add("Error: Invalid types for binary operation '" + token.data + "'.");
