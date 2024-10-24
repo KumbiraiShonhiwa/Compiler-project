@@ -47,8 +47,8 @@ public class Node {
 
     public String toXML() {
         StringBuilder xml = new StringBuilder();
-        xml.append("<IN>\n");
         if (parent != null) {
+            xml.append("<IN>\n");
             xml.append("<PARENT>").append(parent.unid).append("</PARENT>\n");
             xml.append("<UNID>").append(unid).append("</UNID>\n");
             xml.append("<SYMB>").append(symbol).append("</SYMB>\n");
