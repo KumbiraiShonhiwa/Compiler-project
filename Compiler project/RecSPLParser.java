@@ -40,14 +40,14 @@ public class RecSPLParser {
     //         return String.format("(%d: %s, \"%s\")", id, type.name(), data);
     //     }
     // }
-    private final List<Token> tokens;
-    private int currentTokenIndex;
-    private int nodeIdCounter = 0;
-    private final SyntaxTree syntaxTree;
+    final List<Token> tokens;
+    int currentTokenIndex;
+    int nodeIdCounter = 0;
+    final SyntaxTree syntaxTree;
     //private final Stack<Map<String, String>> symbolTableStack;
-    private SymbolTable symbolTable;
-    private Map<String, FunctionSignature> functionTable;
-    private String darkart = "darkart";
+    SymbolTable symbolTable;
+    Map<String, FunctionSignature> functionTable;
+    String darkart = "darkart";
 
     private int getNextNodeId() {
         return nodeIdCounter++;
