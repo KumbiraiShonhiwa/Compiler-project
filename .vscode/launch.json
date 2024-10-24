@@ -6,6 +6,27 @@
     "configurations": [
         {
             "type": "java",
+            "name": "MainClass",
+            "request": "launch",
+            "mainClass": "MainClass",
+            "projectName": "Compiler-project_301c5eb5"
+        },
+        {
+            "type": "java",
+            "name": "TypeCheckerTest",
+            "request": "launch",
+            "mainClass": "TypeCheckerTest",
+            "projectName": "Compiler-project_301c5eb5"
+        },
+        {
+            "type": "java",
+            "name": "RecSPLParser",
+            "request": "launch",
+            "mainClass": "RecSPLParser",
+            "projectName": "Compiler-project_301c5eb5"
+        },
+        {
+            "type": "java",
             "name": "RecSPLParser",
             "request": "launch",
             "mainClass": "RecSPLParser",

@@ -33,10 +33,22 @@ public class Node {
         this.parent = parent;
     }
 
+    public String getSymbol() {
+        return symbol;
+    }
+
+    public List<Node> getChildren() {
+        return children;
+    }
+
+    public Node getChild(int i) {
+        return children.get(i);
+    }
+
     public String toXML() {
         StringBuilder xml = new StringBuilder();
-        xml.append("<IN>\n");
         if (parent != null) {
+            xml.append("<IN>\n");
             xml.append("<PARENT>").append(parent.unid).append("</PARENT>\n");
             xml.append("<UNID>").append(unid).append("</UNID>\n");
             xml.append("<SYMB>").append(symbol).append("</SYMB>\n");
@@ -53,5 +65,30 @@ public class Node {
 
     public int getUnid() {
         return unid;
+    }
+
+    public Node getChild(String symbol) {
+        for (Node child : children) {
+            if (child.symbol.equals(symbol)) {
+                return child;
+            }
+        }
+        return null;
+    }
+    
+    public boolean hasChild(String symbol) {
+        for (Node child : children) {
+            if (child.symbol.equals(symbol)) {
+                return true; // Return true if a matching child is found
+            }
+        }
+        return false; // Return false if no matching child is found
+    }
+
+    public Node getFirstChild() {
+        if (!children.isEmpty()) {
+            return children.get(0); // Return the first child if it exists
+        }
+        return null; 
     }
 }

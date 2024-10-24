@@ -1,10 +1,11 @@
 import java.util.ArrayList;
 import java.util.List;
-public class RecSPLTypeChecker {
+
+public class TypeChecker {
     private SymbolTable symbolTable;
     private final List<String> errors;
 
-    public RecSPLTypeChecker(SymbolTable symbolTableA) {
+    public TypeChecker(SymbolTable symbolTableA) {
         this.symbolTable = symbolTableA;
         this.errors = new ArrayList<>();
     }
@@ -13,7 +14,7 @@ public class RecSPLTypeChecker {
         for (Token token : tokens) {
             switch (token.type) {
                 case MAIN:
-                    checkMainFunction(tokens);
+                    checkMainFunction(token);
                     break;
                 case BEGIN:
                     symbolTable.enterScope();
@@ -25,6 +26,7 @@ public class RecSPLTypeChecker {
                     checkVariableReference(token);
                     break;
                 case CONST:
+                    // Handle constants if necessary (this is handled later in expressions)
                     break;
                 case EQUALS:
                     handleAssignment(tokens);
@@ -46,7 +48,9 @@ public class RecSPLTypeChecker {
                     break;
                 case SKIP:
                 case HALT:
+                    // These commands don't require specific checks
                     break;
+                // Add other cases as necessary for your grammar
                 default:
                     break;
             }
@@ -55,24 +59,10 @@ public class RecSPLTypeChecker {
         return reportErrors();
     }
 
-    private void checkMainFunction(List<Token> tokens) {
-        boolean foundMain = false;
-    
-        for (int i = 0; i < tokens.size(); i++) {
-            Token token = tokens.get(i);
-    
-           
-            if (token.type == TokenType.MAIN) {
-                foundMain = true;
-            }
-        }
-    
-        // If main function was not found
-        if (!foundMain) {
-            errors.add("Error: 'main' function is not declared.");
-        }
+    private void checkMainFunction(Token token) {
+        // Check for the presence of a main function
+        // Assuming you have logic for this already
     }
-    
 
     private void checkVariableReference(Token token) {
         if (!symbolTable.containsSymbol(token.data)) {
@@ -87,33 +77,23 @@ public class RecSPLTypeChecker {
             if (!symbolTable.containsSymbol(variable.data)) {
                 errors.add("Error: Variable '" + variable.data + "' is not declared before assignment.");
             }
-        
+            // Further checks for the expression on the right-hand side
+            // You may want to check the type of the assigned value
             checkAssignmentValue(tokens, index);
         }
     }
 
     private void checkAssignmentValue(List<Token> tokens, int index) {
+        // Assuming the term is to the right of the assignment
         if (index + 1 < tokens.size()) {
             Token assignedValue = tokens.get(index + 1);
-    
-            if (assignedValue.type == TokenType.CONST) {
-                return; // Valid constant assignment
-            }
-    
-            if (assignedValue.type == TokenType.VNAME) {
-                if (!symbolTable.containsSymbol(assignedValue.data)) {
-                    errors.add("Error: Assigned value must be a declared variable or constant.");
-                } else {
-                   
-                }
-            } else {
-                errors.add("Error: Assigned value must be a constant or a declared variable.");
-            }
-        } else {
-            errors.add("Error: Missing value for assignment.");
+            // Logic to check type of the assigned value goes here
+            // For example:
+            // if (assignedValue.type != TokenType.CONST && !symbolTable.containsSymbol(assignedValue.data)) {
+            //     errors.add("Error: Assigned value must be a declared variable or constant.");
+            // }
         }
     }
-    
 
     private void checkBinaryOperation(List<Token> tokens, Token token) {
         // Implement type checking for binary operations
@@ -146,66 +126,17 @@ public class RecSPLTypeChecker {
     }
 
     private void checkCondition(List<Token> tokens) {
-        int ifIndex = tokens.indexOf(new Token(TokenType.IF, "if", 0));
-        if (ifIndex != -1) {
-            int conditionEndIndex = ifIndex + 1;
-    
-            while (conditionEndIndex < tokens.size() && tokens.get(conditionEndIndex).type != TokenType.THEN) {
-                conditionEndIndex++;
-            }
-    
-            if (conditionEndIndex < tokens.size()) {
-                Token conditionToken = tokens.get(conditionEndIndex - 1);
-                if (conditionToken.type == TokenType.BINOP) {
-                    // Logic to check the left and right operands of the binary operation
-                    Token leftOperand = tokens.get(conditionEndIndex - 2); // Left operand
-                    Token rightOperand = tokens.get(conditionEndIndex); // Right operand
-    
-                    if (!isBooleanExpression(leftOperand) || !isBooleanExpression(rightOperand)) {
-                        errors.add("Error: Condition in IF statement must evaluate to a boolean type.");
-                    }
-                } else {
-                    errors.add("Error: Condition in IF statement must be a binary operation.");
-                }
-            } else {
-                errors.add("Error: Missing THEN after IF condition.");
-            }
-        }
+        // Check conditions in IF statements
+        // Ensure the condition evaluates to a boolean type
+        // You may want to look for the last binary operation before IF
+        // Check that the result type of the condition is boolean
     }
-    
-    private boolean isBooleanExpression(Token token) {
-       
-        return token.type == TokenType.BINOP && (token.data.equals("eq") || token.data.equals("grt"));
-    }
-    
 
     private void checkFunctionCall(List<Token> tokens) {
-        for (int i = 0; i < tokens.size(); i++) {
-            if (tokens.get(i).type == TokenType.FNAME) {
-                String functionName = tokens.get(i).data;
-    
-                if (!symbolTable.containsSymbol(functionName)) {
-                    errors.add("Error: Function '" + functionName + "' is not declared.");
-                    continue;
-                }
-    
-                int paramStartIndex = i + 1; // Start of parameters
-                int paramEndIndex = paramStartIndex;
-    
-                while (paramEndIndex < tokens.size() && tokens.get(paramEndIndex).type != TokenType.RPAREN) {
-                    paramEndIndex++;
-                }
-    
-                if (paramEndIndex < tokens.size()) {
-                    List<Token> params = tokens.subList(paramStartIndex, paramEndIndex);
-                  
-                } else {
-                    errors.add("Error: Missing closing parenthesis for function call '" + functionName + "'.");
-                }
-            }
-        }
+        // Check if the function called exists in the symbol table
+        // Check the number of arguments matches the function signature
+        // Ensure types of arguments match expected types
     }
-    
 
     private void checkPrintStatement(List<Token> tokens) {
         // Check that the argument of print is a valid type (either variable or constant)

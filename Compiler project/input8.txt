@@ -3,6 +3,9 @@ num V_a, num V_b, num V_c, num V_result1, num V_result2,
 begin
     V_a = 10;
     V_b = 5;
+    V_result1 = add(add(10,10),5);
+    V_b = sqrt(sqrt(10));
+    print "V0";
     V_c = F_localfunc(V_a,V_b,V_c);
     
     
@@ -17,7 +20,7 @@ void F_localfunc(V_a, V_b, V_c)
 
     begin
         V_innerresult = 0;
-        if grt(V_innerresult, V_c) then
+        if add(add(V_innerresult, V_c),add(V_a,V_b)) then
             begin
                 print "Inner";
             end
@@ -30,7 +33,8 @@ void F_localfunc(V_a, V_b, V_c)
     end
 }
 
-void F_other(V_a, V_b)
+
+void F_hun(V_a, V_b, V_c)
 {
     num V_innerresult
 
@@ -49,25 +53,6 @@ void F_other(V_a, V_b)
     end
 }
 
-void F_another(V_a, V_b)
-{
-    num V_innerresult
-
-    begin
-        V_innerresult = 0;
-        if grt(V_innerresult, V_c) then
-            begin
-                print "Inner";
-            end
-        else
-            begin
-                print "Equal";
-            end
-        ;
-       return V_innerresult;
-    end
-}
-end
-end
+end 
 end
 
