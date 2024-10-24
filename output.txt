@@ -1,11 +1,24 @@
-V_a := 10
-V_b := 5
-V_result1 := 10+10+5
+V0 = 10
+X0 = V0
+V2 = 5
+X2 = V2
+V4 = 10 + 10 + 5
+X4 = V4
+V6 = SQR(SQR(10))
+X6 = V6
 PRINT 0
-V_c := CALL_F_localfunc(V_a,V_b,V_c)
-STOP  REM BEGIN V_innerresult := 0
-IF V_innerresult grt V_c THEN PRINT "Inner"
+V10 = CALLF_localfunc(X10,X11,X12)
+X8 = V10
+STOP  REM BEGIN V15 = 0
+X13 = V15
+IF X15 + X16 + X17 + X18 THEN PRINT "Inner"
 ELSE PRINT "Equal"
 
-RETURN V_innerresult
-REM END  STOP
+RETURN X19
+REM END  REM BEGIN V22 = 0
+X20 = V22
+IF X22 > X23 THEN PRINT "Inner"
+ELSE PRINT "Equal"
+
+RETURN X24
+REM END  STOP  STOP

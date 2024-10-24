@@ -10,6 +10,9 @@ public class CodeGenerator {
     private final SymbolTable symbolTable;
     private Map<String, FunctionSignature> functionTable;
     private int currentTokenIndex;
+    private int lableCounter = 0;
+    private int variableCounter = 0;
+    private int xCounter = 0;
 
     public CodeGenerator(List<Token> tokens, SymbolTable symbolTable, Map<String, FunctionSignature> functionTable) {
         this.tokens = tokens;
@@ -29,6 +32,14 @@ public class CodeGenerator {
             return null; // End of input
         }
 
+    }
+
+    private String newLabel(){
+        return "L" + lableCounter++;
+    }
+
+    private String newVariable(){
+        return "V" + variableCounter++;
     }
 
     private String translationPROG() {
@@ -154,10 +165,16 @@ public class CodeGenerator {
 
     private String translationASSIGN() {
         // VNAME = TERM
+        String place = newVariable();
+        String x = "X" + xCounter++;
         String vnameCode = translateATOMIC();
+        if(TokenType.INPUT == getCurrentToken().type){
+            match(TokenType.INPUT);
+            return "INPUT "+vnameCode;
+        }
         match(TokenType.EQUALS); // Consume '='
         String termCode = translationTERM();
-        return vnameCode + " := " + termCode; // Translate assignment
+        return place +" = "+termCode+"\n"+x+" = "+place; // Translate assignment
     }
 
     private String translationTERM() {
@@ -185,15 +202,17 @@ public class CodeGenerator {
         match(TokenType.COMMA);
         String p3 = translateATOMIC();
         match(TokenType.RPAREN); // Consume ')'
-        return "CALL_" + signature.getFunctionName() + "(" + p1 + "," + p2 + "," + p3 + ")";
+        return "CALL" + signature.getFunctionName() + "(" + p1 + "," + p2 + "," + p3 + ")";
     }
 
     private String translateATOMIC() {
         // Handle atomic elements, such as VNAME and CONST
         Token currentToken = tokens.get(currentTokenIndex++);
         if (currentToken.type == TokenType.VNAME) {
+            String place = newVariable();
+            String x = "X" + xCounter++;
             // Retrieve renamed variable from symbol table
-            return symbolTable.getVariableName(currentToken.data);
+            return x;
         } else if (currentToken.type == TokenType.CONST2 || currentToken.type == TokenType.CONST) {
             return currentToken.data; // Return constant as is
         }
@@ -225,6 +244,8 @@ public class CodeGenerator {
             case "sub":
             case "mul":
             case "div":
+            case "and":
+            case "or":
                 match(TokenType.BINOP); // Consume binary operator
                 match(TokenType.LPAREN); // Consume '('
 
@@ -247,7 +268,7 @@ public class CodeGenerator {
                 }
 
                 match(TokenType.RPAREN); // Consume ')'
-                return atomic1Code + convertOPtoSymbol(op) + atomic2Code;
+                return atomic1Code + " "+convertOPtoSymbol(op) +" "+ atomic2Code;
 
             default:
                 throw new RuntimeException("Unknown binary operator: " + op);
@@ -257,7 +278,7 @@ public class CodeGenerator {
     public String convertOPtoSymbol(String op) {
         switch (op) {
             case "eq":
-                return "=";
+                return "==";
             case "grt":
                 return ">";
             case "add":
@@ -268,6 +289,16 @@ public class CodeGenerator {
                 return "*";
             case "div":
                 return "/";
+            case "and":
+                String arg = newLabel();
+                String code1 = translationCOND();
+                String code2 = translationCOND();
+                return code1 + " [LABEL "+arg+"]" + code2 ;
+            case "or":
+                String arg1 = newLabel();
+                String code3 = translationCOND();
+                String code4 = translationCOND();
+                return code3 + " [LABEL "+arg1+"]" + code4;
             default:
                 throw new RuntimeException("Unknown binary operator: " + op);
         }
@@ -275,11 +306,12 @@ public class CodeGenerator {
 
     private String translateUnop() {
         Token currentToken = getCurrentToken();
-
+        String op = currentToken.data;
         match(TokenType.UNOP); // Consume unary operator
         match(TokenType.LPAREN); // Consume '('
 
         String argumentCode = "";
+        String place1 = newVariable();
 
         // Check if the argument is an ATOMIC or an OP
         currentToken = getCurrentToken();
@@ -291,10 +323,10 @@ public class CodeGenerator {
 
         match(TokenType.RPAREN); // Consume ')'
 
-        switch (currentToken.data) {
+        switch (op) {
             case "not":
                 // No specific syntax for "not", so swap branches when it is used in a condition
-                return ""; // Assuming not is handled in another part of code as per instructions
+                return translationCOND(); // Assuming not is handled in another part of code as per instructions
             case "sqrt":
                 return "SQR(" + argumentCode + ")";
             default:
@@ -304,6 +336,9 @@ public class CodeGenerator {
 
     private String translationBRANCH() {
         // Handle branch statement translations
+        String label1 = newLabel();
+        String label2 = newLabel();
+        String label3 = newLabel();
         match(TokenType.IF); // Consume 'if'
         String conditionCode = translationCOND();
         match(TokenType.THEN); // Consume 'then'
@@ -318,20 +353,21 @@ public class CodeGenerator {
         // Placeholder: Assuming conditions are always SIMPLE for now
         Token currentToken = getCurrentToken();
         if (currentToken.type == TokenType.BINOP) {
-            match(TokenType.BINOP);
-            match(TokenType.LPAREN);
-            Token atomic1 = getCurrentToken();
-            if (atomic1.type == TokenType.VNAME || atomic1.type == TokenType.CONST || atomic1.type == TokenType.CONST2) {
-                return translationSIMPLE(currentToken.data);
-            } else {
-                return translationCOMPOSIT(currentToken.data);
-            }
+           return translateBinop();
+           // match(TokenType.LPAREN);
+            // Token atomic1 = getCurrentToken();
+            // if (atomic1.type == TokenType.VNAME || atomic1.type == TokenType.CONST || atomic1.type == TokenType.CONST2) {
+            //     return translationSIMPLE(currentToken.data);
+            // } else {
+            //     return translationCOMPOSIT(currentToken.data);
+            // }
 
         } else if (currentToken.type == TokenType.UNOP) {
-            match(TokenType.UNOP);
-            match(TokenType.LPAREN);
-            Token atomic1 = getCurrentToken();
-            return translationSIMPLE(currentToken.data);
+            return translateUnop();
+            // match(TokenType.UNOP);
+            // match(TokenType.LPAREN);
+            // Token atomic1 = getCurrentToken();
+            // return translationSIMPLE(currentToken.data);
         } else {
             throw new RuntimeException("Unexpected condition: " + currentToken);
         }
@@ -416,8 +452,19 @@ public class CodeGenerator {
         // LOCVARS are ignored in the code generation step.
         Token expected = getCurrentToken();
         System.out.println(expected.type.toString());
-        match(expected.type);
-        match(TokenType.VNAME);
+        if(expected.type == TokenType.NUM || expected.type == TokenType.TEXT){ 
+            match(expected.type);
+            expected = getCurrentToken();
+            match(TokenType.VNAME);
+            expected = getCurrentToken();
+            if(expected.type == TokenType.COMMA){
+                match(TokenType.COMMA);
+                translateLOCVARS();
+            }
+        }else if(expected == null){
+            return;
+        }
+        
     }
 
     public String translateBODY() {

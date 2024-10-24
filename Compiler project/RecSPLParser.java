@@ -72,7 +72,7 @@ public class RecSPLParser {
         // this.symbolTableStack = new Stack<>();
         this.symbolTable = new SymbolTable();
         this.functionTable = parser.functionTable;
-      //  System.out.println("Function table size: " + functionTable.size());
+        //  System.out.println("Function table size: " + functionTable.size());
         functionTable.forEach((key, value) -> {
             // System.out.println(key + " : " + value);
             // System.out.println(value.getParamTypes());
@@ -177,13 +177,13 @@ public class RecSPLParser {
                 parseGlobVars(globVarsNode); // recursively parse more global vars
             }
         } else {
-          //  System.out.println("No global variables found");
+            //  System.out.println("No global variables found");
         }
     }
 
     // <ALGO> ::= begin INSTRUC end
     public void parseAlgo(Node parentNode) throws Exception {
-       // System.out.println("Parsing algorithm block");
+        // System.out.println("Parsing algorithm block");
         Node algoNode = new Node(nodeIdCounter++, "ALGO", parentNode);
         parentNode.addChild(algoNode);
         Token token = getCurrentToken();
@@ -261,7 +261,7 @@ public class RecSPLParser {
     // Helper methods
     private String parseAtomic(Node parentNode) throws Exception {
         Token token = getCurrentToken();
-       // System.out.println(token.data);
+        // System.out.println(token.data);
         if (token.type == TokenType.VNAME) {
             expect(TokenType.VNAME, parentNode); // match variable name
             return getVariableType(token.data).type; // return the type of the variable
@@ -323,13 +323,13 @@ public class RecSPLParser {
 
         // Check if the function is declared
         if (darkart.equals("notdarkart")) {
-           // System.out.println("Not Dark art");
+            // System.out.println("Not Dark art");
 
             if (!functionTable.containsKey(funcToken.data)) {
                 throw new Exception("Function " + funcToken.data + " not declared.");
             }
             if (functionTable == null) {
-               // System.out.println("Function table is null");
+                // System.out.println("Function table is null");
             }
             FunctionSignature signature = functionTable.get(funcToken.data);
             expect(TokenType.LPAREN, callNode);
@@ -338,7 +338,6 @@ public class RecSPLParser {
 
             // System.out.println(argumentTypes.size());
             // System.out.println(signature.getParamTypes().size());
-
             // Check if the number and types of arguments match the function signature
             if (!signature.parameterSizeMatch(argumentTypes)) {
                 throw new Exception("Function " + funcToken.data + " called with incorrect number of arguments.");
@@ -349,10 +348,10 @@ public class RecSPLParser {
 
             for (int i = 0; i < functionTable.size(); i++) {
                 if (signature == functionTable.get(funcToken.data)) {
-                  //  System.out.println("Function signature matches");
+                    //  System.out.println("Function signature matches");
                     functionTable.remove(funcToken.data);
                 } else {
-                   throw new Exception("Function signature does not match");
+                    throw new Exception("Function signature does not match");
                 }
             }
 
@@ -494,9 +493,12 @@ public class RecSPLParser {
             // COMPOSITE condition with a binary operation
             // expect(TokenType.BINOP, compositeNode);  // Expect BINOP
             // expect(TokenType.LPAREN, compositeNode); // Expect '('
-
+            expect(TokenType.BINOP, compositeNode);  // Expect BINOP
+            expect(TokenType.LPAREN, compositeNode); // Expect '('
             parseSimple(compositeNode);              // Parse the first SIMPLE condition
             expect(TokenType.COMMA, compositeNode);  // Expect ','
+            expect(TokenType.BINOP, compositeNode);  // Expect BINOP
+            expect(TokenType.LPAREN, compositeNode); // Expect '('
             parseSimple(compositeNode);              // Parse the second SIMPLE condition
 
             expect(TokenType.RPAREN, compositeNode); // Expect ')'
@@ -675,7 +677,7 @@ public class RecSPLParser {
             // System.out.println(functionTable.get(funcToken.data));
         }
         if (searchForFunctionName(funcToken.data)) {
-            throw new Exception("Function " + functionName + " is already declared.");
+            throw new Exception("Scoping error: Function " + functionName + " is already declared.");
         } else {
             functionTable.put(functionName, new FunctionSignature(functionName, returnType, parameterTypes));
         }
@@ -684,7 +686,7 @@ public class RecSPLParser {
     private boolean searchForFunctionName(String functionName) {
         for (int i = 0; i < functionTable.size(); i++) {
             if (functionTable.get(functionName) != null) {
-               // System.out.println(functionTable);
+                // System.out.println(functionTable);
                 return true;
             }
         }
@@ -701,8 +703,8 @@ public class RecSPLParser {
 
             String paramType = "num"; // Parse parameter type
             parameterTypes.add(paramType);
+            symbolTable.symbolTableStack.peek().put(token.data, new SymbolInfo(paramType, null, token.data));
             expect(TokenType.VNAME, paramsNode); // Parse parameter name
-
             if (getCurrentToken().type == TokenType.COMMA) {
                 consume(); // consume ','
                 parameterTypes.addAll(parseParams(paramsNode)); // Recursively parse more parameters
