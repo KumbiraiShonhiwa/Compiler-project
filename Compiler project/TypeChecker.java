@@ -1,163 +1,160 @@
+import java.util.ArrayList;
+import java.util.List;
+
 public class TypeChecker {
-
     private SymbolTable symbolTable;
+    private final List<String> errors;
 
-    public TypeChecker(SymbolTable symbolTable) {
-        this.symbolTable = symbolTable;
+    public TypeChecker(SymbolTable symbolTableA) {
+        this.symbolTable = symbolTableA;
+        this.errors = new ArrayList<>();
     }
 
-    // Main typecheck procedure
-    public boolean typecheck(Node rootNode) {
-        if (rootNode == null) {
-            System.err.println("The AST root node is null.");
-            return false;
+    public boolean check(List<Token> tokens) {
+        for (Token token : tokens) {
+            switch (token.type) {
+                case MAIN:
+                    checkMainFunction(token);
+                    break;
+                case BEGIN:
+                    symbolTable.enterScope();
+                    break;
+                case END:
+                    symbolTable.exitScope();
+                    break;
+                case VNAME:
+                    checkVariableReference(token);
+                    break;
+                case CONST:
+                    // Handle constants if necessary (this is handled later in expressions)
+                    break;
+                case EQUALS:
+                    handleAssignment(tokens);
+                    break;
+                case BINOP:
+                    checkBinaryOperation(tokens, token);
+                    break;
+                case UNOP:
+                    checkUnaryOperation(tokens, token);
+                    break;
+                case IF:
+                case THEN:
+                case ELSE:
+                    checkCondition(tokens);
+                    break;
+                
+                case PRINT:
+                    checkPrintStatement(tokens);
+                    break;
+                case SKIP:
+                case HALT:
+                    // These commands don't require specific checks
+                    break;
+                // Add other cases as necessary for your grammar
+                default:
+                    break;
+            }
         }
-        System.out.println("Starting type-checking...");
-        boolean result = typecheckNode(rootNode);
-        System.out.println(result ? "Type-checking completed successfully." : "Type-checking failed.");
-        return result;
+
+        return reportErrors();
     }
 
-    private boolean typecheckNode(Node node) {
-        if (node == null) {
-            System.err.println("Encountered a null node during type checking.");
-            return false;
-        }
+    private void checkMainFunction(Token token) {
+        // Check for the presence of a main function
+        // Assuming you have logic for this already
+    }
 
-        System.out.println("Type-checking node: " + node.getSymbol());
-        Node next = node.getChildren().get(0);
-        System.out.println("Next node: " + next.getSymbol());
-        switch (next.getSymbol()) {
-            case "PROG" -> {
-                return typecheckPROG(node);
+    private void checkVariableReference(Token token) {
+        if (!symbolTable.containsSymbol(token.data)) {
+            errors.add("Error: Variable '" + token.data + "' is not declared.");
+        }
+    }
+
+    private void handleAssignment(List<Token> tokens) {
+        int index = tokens.indexOf(new Token(TokenType.EQUALS, "=", -1));
+        if (index > 0) {
+            Token variable = tokens.get(index - 1);
+            if (!symbolTable.containsSymbol(variable.data)) {
+                errors.add("Error: Variable '" + variable.data + "' is not declared before assignment.");
             }
-            case "ALGO" -> {
-                return typecheckALGO(node);
-            }
-            case "INSTRUC" -> {
-                return typecheckINSTRUC(node);
-            }
-            case "COMMAND" -> {
-                return typecheckCOMMAND(node);
-            }
-            case "ASSIGN" -> {
-                return typecheckASSIGN(node);
-            }
-            case "print" -> {
-                return typecheckPrint(node);
-            }
-            case "begin", "end" -> {
-                return true; // No specific type check needed for 'begin' and 'end'
-            }
-            default -> {
-                System.err.println("No type-checking rules for symbol: " + node.getSymbol());
-                return false;
+            // Further checks for the expression on the right-hand side
+            // You may want to check the type of the assigned value
+            checkAssignmentValue(tokens, index);
+        }
+    }
+
+    private void checkAssignmentValue(List<Token> tokens, int index) {
+        // Assuming the term is to the right of the assignment
+        if (index + 1 < tokens.size()) {
+            Token assignedValue = tokens.get(index + 1);
+            // Logic to check type of the assigned value goes here
+            // For example:
+            // if (assignedValue.type != TokenType.CONST && !symbolTable.containsSymbol(assignedValue.data)) {
+            //     errors.add("Error: Assigned value must be a declared variable or constant.");
+            // }
+        }
+    }
+
+    private void checkBinaryOperation(List<Token> tokens, Token token) {
+        // Implement type checking for binary operations
+        int index = tokens.indexOf(token);
+        if (index > 0 && index < tokens.size() - 1) {
+            Token leftOperand = tokens.get(index - 1);
+            Token rightOperand = tokens.get(index + 1);
+
+            if (!isValidOperand(leftOperand) || !isValidOperand(rightOperand)) {
+                errors.add("Error: Invalid types for binary operation '" + token.data + "'.");
             }
         }
     }
 
-    private boolean typecheckPROG(Node node) {
-        System.out.println("Type-checking PROG node...");
-        return typecheckNode(node.getChildren().get(0)); // Assume the first child is ALGO
-    }
-
-    private boolean typecheckALGO(Node node) {
-        System.out.println("Type-checking ALGO node...");
-        for (Node child : node.getChildren()) {
-            if (!typecheckNode(child)) {
-                return false;
+    private void checkUnaryOperation(List<Token> tokens, Token token) {
+        // Implement type checking for unary operations
+        int index = tokens.indexOf(token);
+        if (index + 1 < tokens.size()) {
+            Token operand = tokens.get(index + 1);
+            if (!isValidOperand(operand)) {
+                errors.add("Error: Invalid type for unary operation '" + token.data + "'.");
             }
         }
-        return true;
     }
 
-    private boolean typecheckINSTRUC(Node node) {
-        System.out.println("Type-checking INSTRUC node...");
-        for (Node child : node.getChildren()) {
-            if (!typecheckNode(child)) {
-                return false;
+    private boolean isValidOperand(Token operand) {
+        // Determine if the operand is a valid type (e.g., number, variable, constant)
+        return operand.type == TokenType.CONST || 
+               (operand.type == TokenType.VNAME && symbolTable.containsSymbol(operand.data));
+    }
+
+    private void checkCondition(List<Token> tokens) {
+        // Check conditions in IF statements
+        // Ensure the condition evaluates to a boolean type
+        // You may want to look for the last binary operation before IF
+        // Check that the result type of the condition is boolean
+    }
+
+    private void checkFunctionCall(List<Token> tokens) {
+        // Check if the function called exists in the symbol table
+        // Check the number of arguments matches the function signature
+        // Ensure types of arguments match expected types
+    }
+
+    private void checkPrintStatement(List<Token> tokens) {
+        // Check that the argument of print is a valid type (either variable or constant)
+        if (tokens.size() < 2 || !isValidOperand(tokens.get(1))) {
+            errors.add("Error: Invalid argument in print statement.");
+        }
+    }
+
+    private boolean reportErrors() {
+        if (!errors.isEmpty()) {
+            System.err.println("Type Checking Errors:");
+            for (String error : errors) {
+                System.err.println(error);
             }
-        }
-        return true;
-    }
-
-    private boolean typecheckCOMMAND(Node node) {
-        System.out.println("Type-checking COMMAND node...");
-        for (Node child : node.getChildren()) {
-            if (!typecheckNode(child)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean typecheckASSIGN(Node node) {
-        System.out.println("Type-checking ASSIGN node...");
-        Node varNode = node.getChildren().get(0); // The variable being assigned to
-        Node termNode = node.getChildren().get(1); // The value being assigned
-
-        // Ensure the variable exists in the symbol table and determine its type
-        String varType = typeof(varNode);
-        String termType = typeof(termNode);
-
-        System.out.println("Variable Type: " + varType + ", Term Type: " + termType);
-
-        if ("u".equals(varType) || "u".equals(termType)) {
-            System.err.println("Undefined variable or term in assignment.");
-            return false;
-        }
-
-        // Ensure that the types match before assigning
-        if (!varType.equals(termType)) {
-            System.err.println("Type mismatch in assignment: " + varType + " vs " + termType);
-            return false;
-        }
-
-        // Update the symbol table with the new variable and its type (if applicable)
-        //symbolTable.insert(varNode.getSymbol(), varType);
-        return true;
-    }
-
-    private boolean typecheckPrint(Node node) {
-        System.out.println("Type-checking print node...");
-        String type = typeof(node.getChildren().get(0)); // Assuming the first child is the term to print
-        System.out.println("Print Type: " + type);
-        return "n".equals(type) || "t".equals(type);
-    }
-
-    // Auxiliary typeof function
-    private String typeof(Node node) {
-        if (node == null) {
-            System.err.println("Encountered a null node while determining type.");
-            return "u"; // undefined type
-        }
-
-        String symbol = node.getSymbol();
-
-        // Check if the symbol is a variable in the symbol table
-        if (symbolTable.containsSymbol(symbol)) {
-            return symbolTable.getType(symbol);
-        }
-
-        // Determine type based on the node's symbol
-        switch (symbol) {
-            case "num":
-                return "n"; // number type
-            case "text":
-                return "t"; // text type
-            case "void":
-                return "v"; // void type
-            case "VNAME":
-                // Get the type of the variable name from the symbol table
-                String varName = node.getChildren().get(0).getSymbol();
-                return symbolTable.getType(varName);
-            case "CONST":
-                return symbol.matches("\\d+") ? "n" : "t"; // Numeric or text constant
-            case "TERM":
-                return typeof(node.getChildren().get(0)); // Recursively check the term's type
-            default:
-                System.err.println("Undefined type for symbol: " + symbol);
-                return "u"; // undefined type
+            return false; 
+        } else {
+            System.out.println("Type checking completed successfully. No errors found.");
+            return true; 
         }
     }
 }
