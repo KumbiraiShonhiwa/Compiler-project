@@ -1,5 +1,5 @@
 main
-num V_a, num V_b
+num V_a, num V_b,
 begin
     V_a = 5;
     V_b = 10;

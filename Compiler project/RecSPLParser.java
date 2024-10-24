@@ -826,16 +826,15 @@ public class RecSPLParser {
             // System.out.println(syntaxTreeXML);
 
             // Step 5: Typechecking
-            System.out.println("call typechecker ");
-            RecSPLTypeCheckerA typeChecker = new RecSPLTypeCheckerA(parser.symbolTable);
+            System.out.println("Type checking start");
    
-            if (typeChecker.typecheck(parser.syntaxTree))
-            {
-                System.out.println("type checking successful");
-            }
-            else
-            {
-                System.out.println("type checking unsuccessful");
+            RecSPLTypeChecker typeChecker = new RecSPLTypeChecker(parser.symbolTable);
+            boolean isTypeChecked = typeChecker.check(tokens);
+        
+            if (isTypeChecked) {
+                System.out.println("Type checking passed. Proceeding to the next stage.");
+            } else {
+                System.out.println("Type checking failed. Please fix the errors.");
             }
 
             System.out.println("Parsing completed successfully. No syntax errors found.");
